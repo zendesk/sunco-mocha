@@ -31,9 +31,7 @@ module.exports = config => {
       debug: true,
       configure: function configure(b) {
         b.ignore('./lib/cli/*.js')
-          .ignore('chokidar')
           .ignore('fs')
-          .ignore('glob')
           .ignore('./lib/esm-utils.js')
           .ignore('path')
           .ignore('supports-color')
