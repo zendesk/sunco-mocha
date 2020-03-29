@@ -152,8 +152,6 @@
   "browser": {
     "./index.js": "./browser-entry.js",
     "./lib/growl.js": "./lib/browser/growl.js",
-    "./lib/cli/*.js": false,
-    "chokidar": false,
     "fs": false,
     "glob": false,
     "path": false,
