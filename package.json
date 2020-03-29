@@ -152,7 +152,6 @@
   "browser": {
     "./index.js": "./browser-entry.js",
     "./lib/growl.js": "./lib/browser/growl.js",
-    "tty": "./lib/browser/tty.js",
     "./lib/cli/*.js": false,
     "chokidar": false,
     "fs": false,
