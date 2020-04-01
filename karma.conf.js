@@ -30,23 +30,18 @@ module.exports = config => {
     browserify: {
       debug: true,
       configure: function configure(b) {
-        b.ignore('./lib/cli/*.js')
-          .ignore('fs')
-          .ignore('./lib/esm-utils.js')
-          .ignore('path')
-          .ignore('supports-color')
-          .on('bundled', (err, content) => {
-            if (err) {
-              throw err;
-            }
-            if (bundleDirpath) {
-              // write bundle to directory for debugging
-              fs.writeFileSync(
-                path.join(bundleDirpath, `mocha.${Date.now()}.js`),
-                content
-              );
-            }
-          });
+        b.on('bundled', (err, content) => {
+          if (err) {
+            throw err;
+          }
+          if (bundleDirpath) {
+            // write bundle to directory for debugging
+            fs.writeFileSync(
+              path.join(bundleDirpath, `mocha.${Date.now()}.js`),
+              content
+            );
+          }
+        });
       }
     },
     reporters: ['mocha'],
