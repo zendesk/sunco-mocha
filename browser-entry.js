@@ -11,7 +11,7 @@ process.stdout = require('browser-stdout')({label: false});
 
 var parseQuery = require('./lib/browser/parseQuery');
 var highlightTags = require('./lib/browser/highlightTags');
-var Mocha = require('./lib/mocha');
+const Mocha = require('./lib/mocha');
 
 /**
  * Create a Mocha instance.
@@ -40,12 +40,12 @@ var originalOnerrorHandler = global.onerror;
  * Revert to original onerror handler if previously defined.
  */
 
-process.removeListener = function(e, fn) {
+process.removeListener = (e, fn) => {
   if (e === 'uncaughtException') {
     if (originalOnerrorHandler) {
       global.onerror = originalOnerrorHandler;
     } else {
-      global.onerror = function() {};
+      global.onerror = () => {};
     }
     var i = uncaughtExceptionHandlers.indexOf(fn);
     if (i !== -1) {
@@ -58,7 +58,7 @@ process.removeListener = function(e, fn) {
  * Implements listenerCount for 'uncaughtException'.
  */
 
-process.listenerCount = function(name) {
+process.listenerCount = name => {
   if (name === 'uncaughtException') {
     return uncaughtExceptionHandlers.length;
   }
@@ -69,9 +69,9 @@ process.listenerCount = function(name) {
  * Implements uncaughtException listener.
  */
 
-process.on = function(e, fn) {
+process.on = (e, fn) => {
   if (e === 'uncaughtException') {
-    global.onerror = function(err, url, line) {
+    global.onerror = (err, url, line) => {
       fn(new Error(err + ' (' + url + ':' + line + ')'));
       return !mocha.options.allowUncaught;
     };
@@ -79,7 +79,7 @@ process.on = function(e, fn) {
   }
 };
 
-process.listeners = function(e) {
+process.listeners = e => {
   if (e === 'uncaughtException') {
     return uncaughtExceptionHandlers;
   }
@@ -110,7 +110,7 @@ function timeslice() {
  * High-performance override of Runner.immediately.
  */
 
-Mocha.Runner.immediately = function(callback) {
+Mocha.Runner.immediately = callback => {
   immediateQueue.push(callback);
   if (!immediateTimeout) {
     immediateTimeout = setTimeout(timeslice, 0);
@@ -122,8 +122,8 @@ Mocha.Runner.immediately = function(callback) {
  * This is useful when running tests in a browser because window.onerror will
  * only receive the 'message' attribute of the Error.
  */
-mocha.throwError = function(err) {
-  uncaughtExceptionHandlers.forEach(function(fn) {
+mocha.throwError = err => {
+  uncaughtExceptionHandlers.forEach(fn => {
     fn(err);
   });
   throw err;
@@ -160,22 +160,22 @@ mocha.setup = function(opts) {
  * Run mocha, returning the Runner.
  */
 
-mocha.run = function(fn) {
+mocha.run = fn => {
   var options = mocha.options;
   mocha.globals('location');
 
-  var query = parseQuery(global.location.search || '');
-  if (query.grep) {
-    mocha.grep(query.grep);
+  var {grep, fgrep, invert} = parseQuery(global.location.search || '');
+  if (grep) {
+    mocha.grep(grep);
   }
-  if (query.fgrep) {
-    mocha.fgrep(query.fgrep);
+  if (fgrep) {
+    mocha.fgrep(fgrep);
   }
-  if (query.invert) {
+  if (invert) {
     mocha.invert();
   }
 
-  return Mocha.prototype.run.call(mocha, function(err) {
+  return Mocha.prototype.run.call(mocha, err => {
     // The DOM Document is not available in Web Workers.
     var document = global.document;
     if (
