@@ -6,7 +6,7 @@ import json from '@rollup/plugin-json';
 import builtins from 'rollup-plugin-node-builtins';
 import globals from 'rollup-plugin-node-globals';
 
-import {babel} from '@rollup/plugin-babel';
+import buble from '@rollup/plugin-buble';
 
 // Debugging tools
 import visualizer from 'rollup-plugin-visualizer';
@@ -38,6 +38,6 @@ export default {
     }),
     visualizer(),
 
-    babel({presets: ['@babel/preset-env']})
+    buble()
   ]
 };
