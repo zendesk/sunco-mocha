@@ -5,6 +5,7 @@ var Runnable = Mocha.Runnable;
 var Suite = Mocha.Suite;
 var sinon = require('sinon');
 var STATE_FAILED = Runnable.constants.STATE_FAILED;
+var STATE_PASSED = Runnable.constants.STATE_PASSED;
 
 describe('Runnable(title, fn)', function() {
   describe('#timeout(ms)', function() {
@@ -310,8 +311,12 @@ describe('Runnable(title, fn)', function() {
       describe('when the callback is invoked several times', function() {
         describe('without an error', function() {
           it('should emit a single "error" event', function(done) {
-            var callbackSpy = sinon.spy();
-            var errorSpy = sinon.spy();
+            var callbackSpy = sinon.spy(function() {
+              runnable.state = STATE_PASSED;
+            });
+            var errorSpy = sinon.spy(function() {
+              runnable.state = STATE_FAILED;
+            });
 
             var runnable = new Runnable('foo', function(done) {
               process.nextTick(done);
@@ -341,8 +346,12 @@ describe('Runnable(title, fn)', function() {
 
         describe('with an error', function() {
           it('should emit a single "error" event', function(done) {
-            var callbackSpy = sinon.spy();
-            var errorSpy = sinon.spy();
+            var callbackSpy = sinon.spy(function() {
+              runnable.state = STATE_FAILED;
+            });
+            var errorSpy = sinon.spy(function() {
+              runnable.state = STATE_FAILED;
+            });
 
             var runnable = new Runnable('foo', function(done) {
               done(new Error('fail'));
