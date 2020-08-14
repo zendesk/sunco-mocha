@@ -1,4 +1,4 @@
-const dependency = require('./dependency.fixture');
+const dependency = require('./transitive-dep.fixture');
 
 it('checks dependency', () => {
   if (dependency.testShouldFail === true) {

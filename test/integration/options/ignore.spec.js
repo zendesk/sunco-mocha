@@ -1,9 +1,7 @@
 'use strict';
 
-var path = require('path').posix;
-var helpers = require('../helpers');
-var runMochaJSON = helpers.runMochaJSON;
-var resolvePath = helpers.resolveFixturePath;
+const {posix: path} = require('path');
+const {resolveFixturePath, runMochaJSON} = require('../helpers');
 
 describe('--ignore', function() {
   /*
@@ -30,7 +28,7 @@ describe('--ignore', function() {
     var fixtures = path.join('options', 'ignore', '*');
     runMochaTest(
       fixtures,
-      ['--ignore', resolvePath(path.join('options', 'ignore', 'fail'))],
+      ['--ignore', resolveFixturePath(path.join('options', 'ignore', 'fail'))],
       function(res) {
         expect(res, 'to have passed')
           .and('to have run test', 'should find this test')
@@ -60,9 +58,9 @@ describe('--ignore', function() {
       fixtures,
       [
         '--ignore',
-        resolvePath(path.join('options', 'ignore', 'fail')),
+        resolveFixturePath(path.join('options', 'ignore', 'fail')),
         '--ignore',
-        resolvePath(path.join('options', 'ignore', 'nested', 'fail'))
+        resolveFixturePath(path.join('options', 'ignore', 'nested', 'fail'))
       ],
       function(res) {
         expect(res, 'to have passed')

@@ -1,7 +1,6 @@
 'use strict';
 
 const {version} = require('../package.json');
-const escapeRe = require('escape-string-regexp');
 
 module.exports = {
   name: 'unexpected-mocha-internal',
@@ -47,18 +46,25 @@ module.exports = {
           );
         }
       })
-      .addAssertion(
-        '<JSONResult> [not] to have (passed|succeeded)',
-        (expect, result) => {
-          expect(result, 'to satisfy', {
-            code: expect.it('[not] to be', 0),
-            stats: {
-              failures: expect.it('[not] to be', 0)
-            },
-            failures: expect.it('[not] to be empty')
-          });
+      .addType({
+        name: 'JSONSerializableMap',
+        base: 'Map',
+        identify(v) {
+          return this.baseType.identify(v) && typeof v.toJSON === 'function';
         }
-      )
+      })
+      .addAssertion('<JSONResult> [not] to have (passed|succeeded)', function(
+        expect,
+        result
+      ) {
+        expect(result, 'to satisfy', {
+          code: expect.it('[not] to be', 0),
+          stats: {
+            failures: expect.it('[not] to be', 0)
+          },
+          failures: expect.it('[not] to be empty')
+        });
+      })
       .addAssertion(
         '<SummarizedResult|RawResult> [not] to have (passed|succeeded)',
         (expect, result) => {
@@ -196,6 +202,20 @@ module.exports = {
         }
       )
       .addAssertion(
+        '<JSONResult> [not] to have failed with (error|errors) <any+>',
+        (expect, result, ...errors) => {
+          errors.forEach(error => {
+            expect(result, '[not] to have failed').and('[not] to satisfy', {
+              failures: expect.it('to have an item satisfying', {
+                err: expect
+                  .it('to satisfy', error)
+                  .or('to satisfy', {message: error})
+              })
+            });
+          });
+        }
+      )
+      .addAssertion(
         '<JSONResult> [not] to have (error|errors) <any+>',
         (expect, result, ...errors) => {
           errors.forEach(error => {
@@ -225,7 +245,7 @@ module.exports = {
           expect(
             result[state].slice(0, titles.length),
             '[not] to satisfy',
-            titles.map(title => {
+            titles.map(function(title) {
               return typeof title === 'string' ? {title: title} : title;
             })
           );
@@ -307,41 +327,22 @@ module.exports = {
         }
       )
       .addAssertion(
-        '<JSONResult> [not] to have failed with (error|errors) <any+>',
-        function(expect, result, ...errors) {
-          errors.forEach(error => {
-            expect(result, '[not] to have failed').and('[not] to satisfy', {
-              failures: expect.it('to have an item satisfying', {
-                err: expect
-                  .it('to satisfy', error)
-                  .or('to satisfy', {message: error})
-              })
-            });
-          });
-        }
-      )
-      .addAssertion(
         '<RawResult|SummarizedResult> [not] to contain [output] <any>',
         (expect, result, output) => {
           expect(result.output, '[not] to satisfy', output);
         }
       )
       .addAssertion(
-        '<RawResult|SummarizedResult> to contain [output] once <any>',
-        (expect, result, output) => {
-          if (typeof output === 'string') {
-            output = escapeRe(output);
-          } else if (!(output instanceof RegExp)) {
-            throw new TypeError('expected a string or regexp');
-          }
-          output = new RegExp(output, 'g');
-          expect(result.output.match(output), 'to have length', 1);
-        }
-      )
-      .addAssertion(
         '<RawResult|SummarizedResult|JSONResult> to have [exit] code <number>',
         (expect, result, code) => {
           expect(result.code, 'to be', code);
+        }
+      )
+      .addAssertion(
+        '<JSONSerializableMap> as JSON <assertion>',
+        (expect, subject) => {
+          expect.errorMode = 'nested';
+          expect.shift(subject.toJSON());
         }
       );
   }

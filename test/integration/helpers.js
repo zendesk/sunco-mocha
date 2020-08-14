@@ -13,7 +13,6 @@ const touch = require('touch');
  * Path to `mocha` executable
  */
 const MOCHA_EXECUTABLE = require.resolve('../../bin/mocha');
-
 /**
  * regular expression used for splitting lines based on new line / dot symbol.
  */
@@ -362,10 +361,11 @@ function createSubprocess(args, done, opts = {}) {
 }
 
 /**
- * Given a fixture "name" (a relative path from `${__dirname}/fixtures`),
- * with or without extension, or an absolute path, resolve a fixture filepath
+ * Given a partial fixture path, e.g., 'options/watch/foo', return a fixture filepath relative to project root, e.g.,
+ * `test/integration/fixtures/options/watch/foo.fixture.js`
+ * If `fixture` is absolute, it will not become relative.
  * @param {string} fixture - Fixture name
- * @returns {string} Resolved filepath
+ * @returns {string}
  */
 function resolveFixturePath(fixture) {
   if (path.extname(fixture) !== '.js' && path.extname(fixture) !== '.mjs') {
@@ -374,6 +374,15 @@ function resolveFixturePath(fixture) {
   return path.isAbsolute(fixture)
     ? fixture
     : path.resolve(__dirname, 'fixtures', fixture);
+}
+
+/**
+ * Returns an absolute fixture filepath
+ * @param {string} fixture - Fixture name
+ * @param {string} [cwd] - Current working directory
+ */
+function absoluteFixturePath(fixture, cwd = process.cwd()) {
+  return path.resolve(cwd, resolveFixturePath(fixture));
 }
 
 /**
@@ -542,8 +551,8 @@ function sleep(time) {
 module.exports = {
   DEFAULT_FIXTURE,
   SPLIT_DOT_REPORTER_REGEXP,
+  absoluteFixturePath,
   copyFixture,
-
   createTempDir,
   escapeRegExp,
   getSummary,
