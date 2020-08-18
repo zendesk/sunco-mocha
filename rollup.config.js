@@ -37,7 +37,6 @@ const config = {
           '@babel/preset-env',
           {
             modules: false,
-            spec: true,
             useBuiltIns: 'usage',
             forceAllTransforms: true,
             corejs: {
