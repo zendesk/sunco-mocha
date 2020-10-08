@@ -39,7 +39,7 @@ addons:
   chrome: stable
   sauce_connect: true
 after_failure: rm .diff/*
-after_success: cp mocha.js package-lock.json .diff/
+after_success: mkdir -p .diff && cp mocha.js package-lock.json .diff/
 
 notifications:
   email: false
