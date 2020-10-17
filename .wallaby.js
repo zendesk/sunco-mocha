@@ -17,15 +17,19 @@ module.exports = () => {
       'test/setup.js',
       'test/assertions.js',
       {
-        pattern: 'test/node-unit/**/*.fixture.js',
+        pattern: 'test/node-unit/**/*.fixture*',
         instrument: false
       },
       {
-        pattern: 'test/unit/**/*.fixture.js',
+        pattern: 'test/unit/**/*.fixture*',
         instrument: false
       },
       {
-        pattern: 'test/integration/fixtures/options/watch/*.fixture.js',
+        pattern: 'test/integration/fixtures/options/watch/*.fixture*',
+        instrument: false
+      },
+      {
+        pattern: 'test/integration/fixtures/cli/*.fixture*',
         instrument: false
       },
       'bin/*',
@@ -36,7 +40,7 @@ module.exports = () => {
       '!lib/browser/growl.js'
     ],
     filesWithNoCoverageCalculated: [
-      'test/**/*.fixture.js',
+      'test/**/*.fixture*',
       'test/setup.js',
       'test/assertions.js',
       'lib/browser/**/*.js',
@@ -62,7 +66,7 @@ module.exports = () => {
       // running mocha instance is not the same as mocha under test,
       // running mocha is the project's source code mocha, mocha under test is instrumented version of the source code
       const runningMocha = wallaby.testFramework;
-      runningMocha.timeout(1000);
+      runningMocha.timeout(2000);
       // to expose it/describe etc. on the mocha under test
       const MochaUnderTest = require('./');
       const mochaUnderTest = new MochaUnderTest();
