@@ -21,5 +21,6 @@
       "es2015.symbol.wellknown",
       "dom"
     ]
-  }
+  },
+  "files": ["index.fixture.ts"]
 }
