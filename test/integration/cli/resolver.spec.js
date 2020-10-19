@@ -6,7 +6,13 @@ const rewiremock = require('rewiremock/node');
 const path = require('path');
 
 describe('dependency resolution', function() {
+  /**
+   * @type {typeof import('../../../lib/cli/resolver').resolveDependencies}
+   */
   let resolveDependencies;
+  /**
+   * @type {{[key: string]: sinon.SinonStub}}
+   */
   let stubs;
 
   beforeEach(function() {
@@ -18,6 +24,9 @@ describe('dependency resolution', function() {
 
     // this is an integration test, but we don't need to spawn a mocha instance.
     // we do want to stub out some fs-touching methods to make the tests easier though
+    /**
+     * @type {typeof import('../../../lib/cli/resolver')}
+     */
     const resolver = rewiremock.proxy(
       () => require('../../../lib/cli/resolver'),
       r => ({
@@ -51,9 +60,9 @@ describe('dependency resolution', function() {
   });
 
   describe('when provided a `.json` file', function() {
-    it('should return an empty array', function() {
+    it('should return an empty Set', function() {
       expect(
-        [...resolveDependencies(require.resolve('../../../package.json'))],
+        resolveDependencies(require.resolve('../../../package.json')),
         'to be empty'
       );
     });
@@ -94,7 +103,12 @@ describe('dependency resolution', function() {
         });
 
         it('should warn', function() {
-          expect(stubs.warn, 'was called once');
+          expect(stubs.warn, 'to have a call satisfying', [/could not find/])
+            .and('to have a call satisfying', [
+              /could not resolve module/,
+              'glob'
+            ])
+            .and('was called twice');
         });
 
         it('should look for a TS config file in cwd', function() {
@@ -132,17 +146,27 @@ describe('dependency resolution', function() {
 
       beforeEach(function() {
         result = [
-          ...resolveDependencies(resolveFixturePath('cli/index.fixture.js'))
+          ...resolveDependencies(resolveFixturePath('cli/webpack.fixture.js'), {
+            cwd: path.join(__dirname, '..', 'fixtures', 'cli')
+          })
         ];
       });
 
       it('should return the dependencies', function() {
-        expect(result, 'to have an item satisfying', /glob/);
+        expect(result, 'to have an item satisfying', /strip-ansi/);
       });
 
       it('should look for a Webpack config file in cwd', function() {
         expect(stubs.existsSync, 'to have a call satisfying', [
-          path.join(process.cwd(), 'webpack.config.fixture.js')
+          new RegExp(
+            `${path.join(
+              __dirname,
+              '..',
+              'fixtures',
+              'cli',
+              'webpack.config.fixture.js'
+            )}`
+          )
         ]);
       });
     });
@@ -151,13 +175,15 @@ describe('dependency resolution', function() {
       let result;
 
       beforeEach(function() {
-        result = [
-          ...resolveDependencies(resolveFixturePath('cli/index.fixture.js'), {
+        result = resolveDependencies(
+          resolveFixturePath('cli/webpack.fixture.js'),
+          {
             webpackConfigPath: resolveFixturePath(
               'cli/webpack.config.fixture.js'
             )
-          })
-        ];
+            // cwd: path.join(__dirname, '..', 'fixtures', 'cli')
+          }
+        );
       });
 
       it('should not look for a default Webpack config file', function() {
@@ -165,7 +191,13 @@ describe('dependency resolution', function() {
       });
 
       it('should find dependencies', function() {
-        expect(result, 'to have an item satisfying', /glob/).and(
+        expect(
+          result,
+          'as array',
+          'to have an item satisfying',
+          /strip-ansi/
+        ).and(
+          'as array',
           'to have an item satisfying',
           /webpack\.config\.fixture\.js/
         );
@@ -181,13 +213,13 @@ describe('dependency resolution', function() {
         expect(
           [
             ...resolveDependencies(
-              resolveFixturePath('cli/index.fixture.js'),
+              resolveFixturePath('cli/webpack.fixture.js'),
               // change cwd to the directory of the fixture webpack config file
               {cwd: path.join(__dirname, '..', 'fixtures', 'cli')}
             )
           ],
           'to have an item satisfying',
-          /glob/
+          /strip-ansi/
         ).and('to have an item satisfying', /webpack\.config\.fixture\.js$/);
       });
     });
