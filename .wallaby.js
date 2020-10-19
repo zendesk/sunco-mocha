@@ -55,7 +55,10 @@ module.exports = () => {
     ],
     env: {
       type: 'node',
-      runner: 'node'
+      runner: 'node',
+      params: {
+        env: 'DEBUG=mocha*'
+      }
     },
     preprocessors: {
       'bin/*': noopPreprocessor
