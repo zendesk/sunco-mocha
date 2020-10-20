@@ -17,19 +17,7 @@ module.exports = () => {
       'test/setup.js',
       'test/assertions.js',
       {
-        pattern: 'test/node-unit/**/*.fixture*',
-        instrument: false
-      },
-      {
-        pattern: 'test/unit/**/*.fixture*',
-        instrument: false
-      },
-      {
-        pattern: 'test/integration/fixtures/options/watch/*.fixture*',
-        instrument: false
-      },
-      {
-        pattern: 'test/integration/fixtures/cli/*.fixture*',
+        pattern: 'test/**/*.fixture*',
         instrument: false
       },
       'bin/*',
@@ -60,7 +48,13 @@ module.exports = () => {
         env: 'DEBUG=mocha*'
       }
     },
+    compilers: {
+      // do not compile any typescript files!
+      // see https://github.com/wallabyjs/public/issues/2544
+      '**/*.ts': file => file
+    },
     preprocessors: {
+      // this enables running Mocha in a subprocess, as our integration tests do
       'bin/*': noopPreprocessor
     },
     workers: {recycle: true},
@@ -83,6 +77,8 @@ module.exports = () => {
     },
     debug: true,
     runMode: 'onsave',
+    // by default wallaby _displays_ relative paths, but this makes working with absolute paths difficult.
+    // this disables the behavior
     preservePaths: true
   };
 };
