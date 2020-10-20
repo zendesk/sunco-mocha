@@ -73,14 +73,17 @@ describe('dependency resolution', function() {
       it('should find dependencies', function() {
         // this should _actually work_; no magic stubs here
         expect(
-          [
-            ...resolveDependencies(resolveFixturePath('cli/index.fixture.ts'), {
-              tsConfigPath: resolveFixturePath('cli/tsconfig.fixture.json')
-            })
-          ],
+          resolveDependencies(resolveFixturePath('cli/index.fixture.ts'), {
+            tsConfigPath: resolveFixturePath('cli/tsconfig.fixture.json')
+          }),
+          'as array',
           'to have an item satisfying',
           /glob/
-        ).and('to have an item satisfying', /tsconfig\.fixture\.json/);
+        ).and(
+          'as array',
+          'to have an item satisfying',
+          /tsconfig\.fixture\.json/
+        );
       });
 
       it('should not look for a default TS config file', function() {
@@ -93,9 +96,9 @@ describe('dependency resolution', function() {
         let result;
 
         beforeEach(function() {
-          result = [
-            ...resolveDependencies(resolveFixturePath('cli/index.fixture.ts'))
-          ];
+          result = resolveDependencies(
+            resolveFixturePath('cli/index.fixture.ts')
+          );
         });
 
         it('should return an empty Set', function() {
@@ -125,16 +128,19 @@ describe('dependency resolution', function() {
 
         it('should use the found TS config file', function() {
           expect(
-            [
-              ...resolveDependencies(
-                resolveFixturePath('cli/index.fixture.ts'),
-                // change cwd to the directory of the fixture tsconfig file
-                {cwd: path.join(__dirname, '..', 'fixtures', 'cli')}
-              )
-            ],
+            resolveDependencies(
+              resolveFixturePath('cli/index.fixture.ts'),
+              // change cwd to the directory of the fixture tsconfig file
+              {cwd: path.join(__dirname, '..', 'fixtures', 'cli')}
+            ),
+            'as array',
             'to have an item satisfying',
             /glob/
-          ).and('to have an item satisfying', /tsconfig\.fixture\.json$/);
+          ).and(
+            'as array',
+            'to have an item satisfying',
+            /tsconfig\.fixture\.json$/
+          );
         });
       });
     });
@@ -145,15 +151,16 @@ describe('dependency resolution', function() {
       let result;
 
       beforeEach(function() {
-        result = [
-          ...resolveDependencies(resolveFixturePath('cli/webpack.fixture.js'), {
+        result = resolveDependencies(
+          resolveFixturePath('cli/webpack.fixture.js'),
+          {
             cwd: path.join(__dirname, '..', 'fixtures', 'cli')
-          })
-        ];
+          }
+        );
       });
 
       it('should return the dependencies', function() {
-        expect(result, 'to have an item satisfying', /strip-ansi/);
+        expect(result, 'as array', 'to have an item satisfying', /strip-ansi/);
       });
 
       it('should look for a Webpack config file in cwd', function() {
@@ -211,16 +218,19 @@ describe('dependency resolution', function() {
 
       it('should use the found Webpack config file', function() {
         expect(
-          [
-            ...resolveDependencies(
-              resolveFixturePath('cli/webpack.fixture.js'),
-              // change cwd to the directory of the fixture webpack config file
-              {cwd: path.join(__dirname, '..', 'fixtures', 'cli')}
-            )
-          ],
+          resolveDependencies(
+            resolveFixturePath('cli/webpack.fixture.js'),
+            // change cwd to the directory of the fixture webpack config file
+            {cwd: path.join(__dirname, '..', 'fixtures', 'cli')}
+          ),
+          'as array',
           'to have an item satisfying',
           /strip-ansi/
-        ).and('to have an item satisfying', /webpack\.config\.fixture\.js$/);
+        ).and(
+          'as array',
+          'to have an item satisfying',
+          /webpack\.config\.fixture\.js$/
+        );
       });
     });
   });
@@ -229,11 +239,10 @@ describe('dependency resolution', function() {
     describe('when provided a set of globs to ignore', function() {
       it('should not return files matching the globs', function() {
         expect(
-          [
-            ...resolveDependencies(require.resolve('../../../lib/mocha'), {
-              ignore: new Set(['**/node_modules/**'])
-            })
-          ],
+          resolveDependencies(require.resolve('../../../lib/mocha'), {
+            ignore: new Set(['**/node_modules/**'])
+          }),
+          'as array',
           'to have items satisfying',
           expect.it('not to match', /node_modules/)
         );
@@ -243,11 +252,10 @@ describe('dependency resolution', function() {
     describe('when provided an array of globs to ignore', function() {
       it('should not return files matching the globs', function() {
         expect(
-          [
-            ...resolveDependencies(require.resolve('../../../lib/mocha'), {
-              ignore: ['**/node_modules/**']
-            })
-          ],
+          resolveDependencies(require.resolve('../../../lib/mocha'), {
+            ignore: ['**/node_modules/**']
+          }),
+          'as array',
           'to have items satisfying',
           expect.it('not to match', /node_modules/)
         );
@@ -257,11 +265,10 @@ describe('dependency resolution', function() {
     describe('when provided a string glob to ignore', function() {
       it('should not return files matching the glob', function() {
         expect(
-          [
-            ...resolveDependencies(require.resolve('../../../lib/mocha'), {
-              ignore: '**/node_modules/**'
-            })
-          ],
+          resolveDependencies(require.resolve('../../../lib/mocha'), {
+            ignore: '**/node_modules/**'
+          }),
+          'as array',
           'to have items satisfying',
           expect.it('not to match', /node_modules/)
         );
