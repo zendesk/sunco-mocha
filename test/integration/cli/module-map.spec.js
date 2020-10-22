@@ -239,7 +239,7 @@ describe('module-map', function() {
       it('should return a list of test files to re-run', function() {
         expect(
           moduleMap.findAffectedFiles({
-            markChangedFiles: [DEP_PATH]
+            knownChangedFiles: [DEP_PATH]
           }),
           'to equal',
           {
@@ -262,7 +262,7 @@ describe('module-map', function() {
       it('should return a list of entry files', function() {
         expect(
           moduleMap.findAffectedFiles({
-            markChangedFiles: [TEST_WITH_DEP_PATH]
+            knownChangedFiles: [TEST_WITH_DEP_PATH]
           }),
           'to equal',
           {
@@ -281,7 +281,7 @@ describe('module-map', function() {
       it('should return nothing', function() {
         expect(
           moduleMap.findAffectedFiles({
-            markChangedFiles: [absoluteFixturePath('options/watch/hook')]
+            knownChangedFiles: [absoluteFixturePath('options/watch/hook')]
           }),
           'to equal',
           {entryFiles: new Set(), allFiles: new Set()}
