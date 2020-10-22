@@ -76,13 +76,8 @@ describe('dependency resolution', function() {
           resolveDependencies(resolveFixturePath('cli/index.fixture.ts'), {
             tsConfigPath: resolveFixturePath('cli/tsconfig.fixture.json')
           }),
-          'as array',
-          'to have an item satisfying',
-          /glob/
-        ).and(
-          'as array',
-          'to have an item satisfying',
-          /tsconfig\.fixture\.json/
+          'to satisfy',
+          new Set([/glob/, /tsconfig\.fixture\.json/])
         );
       });
 
@@ -92,26 +87,23 @@ describe('dependency resolution', function() {
     });
 
     describe('when not provided a path to TS config file', function() {
-      describe('when TS config file not in `cwd`', function() {
+      describe('when file contains a missing module', function() {
         let result;
 
         beforeEach(function() {
           result = resolveDependencies(
-            resolveFixturePath('cli/index.fixture.ts')
+            resolveFixturePath('cli/unknown-dep.fixture.ts')
           );
         });
 
-        it('should return an empty Set', function() {
+        it('should return an empty set', function() {
           expect(result, 'to be empty');
         });
+      });
 
-        it('should warn', function() {
-          expect(stubs.warn, 'to have a call satisfying', [/could not find/])
-            .and('to have a call satisfying', [
-              /could not resolve module/,
-              'glob'
-            ])
-            .and('was called twice');
+      describe('when TS config file not in `cwd`', function() {
+        beforeEach(function() {
+          resolveDependencies(resolveFixturePath('cli/index.fixture.ts'));
         });
 
         it('should look for a TS config file in cwd', function() {
@@ -147,20 +139,36 @@ describe('dependency resolution', function() {
   });
 
   describe('when provided a JavaScript file', function() {
+    describe('when file contains a syntax error', function() {
+      let result;
+
+      beforeEach(function() {
+        result = resolveDependencies(resolveFixturePath('cli/syntax'));
+      });
+
+      it('should return an empty set', function() {
+        expect(result, 'to be empty');
+      });
+    });
+
     describe('when not provided a path to a Webpack config file', function() {
       let result;
 
       beforeEach(function() {
-        result = resolveDependencies(
-          resolveFixturePath('cli/webpack.fixture.js'),
-          {
-            cwd: path.join(__dirname, '..', 'fixtures', 'cli')
-          }
-        );
+        result = resolveDependencies(resolveFixturePath('cli/webpack'), {
+          cwd: path.join(__dirname, '..', 'fixtures', 'cli')
+        });
       });
 
-      it('should return the dependencies', function() {
-        expect(result, 'as array', 'to have an item satisfying', /strip-ansi/);
+      it('should resolve non-relative modules from nearest module directory', function() {
+        // this differs from the test using webpack.config.fixture.js, which points
+        // to a specific module directory in the fixture dir (`mode_nodules`) and has
+        // a different `strip-ansi`
+        expect(
+          result,
+          'to satisfy',
+          new Set([/node_modules\/strip-ansi/, /webpack-dep\.fixture\.js/])
+        );
       });
 
       it('should look for a Webpack config file in cwd', function() {
@@ -182,31 +190,25 @@ describe('dependency resolution', function() {
       let result;
 
       beforeEach(function() {
-        result = resolveDependencies(
-          resolveFixturePath('cli/webpack.fixture.js'),
-          {
-            webpackConfigPath: resolveFixturePath(
-              'cli/webpack.config.fixture.js'
-            )
-            // cwd: path.join(__dirname, '..', 'fixtures', 'cli')
-          }
-        );
+        const fixture = resolveFixturePath('cli/webpack.fixture.js');
+        result = resolveDependencies(fixture, {
+          webpackConfigPath: resolveFixturePath('cli/webpack.config.fixture.js')
+        });
       });
 
       it('should not look for a default Webpack config file', function() {
         expect(stubs.existsSync, 'was not called');
       });
 
-      it('should find dependencies', function() {
+      it('should find dependencies as declared by webpack config', function() {
         expect(
           result,
-          'as array',
-          'to have an item satisfying',
-          /strip-ansi/
-        ).and(
-          'as array',
-          'to have an item satisfying',
-          /webpack\.config\.fixture\.js/
+          'to satisfy',
+          new Set([
+            /webpack\.config\.fixture\.js/,
+            /mode_nodules\/strip-ansi/,
+            /webpack-dep\.fixture\.js/
+          ])
         );
       });
     });
@@ -223,13 +225,12 @@ describe('dependency resolution', function() {
             // change cwd to the directory of the fixture webpack config file
             {cwd: path.join(__dirname, '..', 'fixtures', 'cli')}
           ),
-          'as array',
-          'to have an item satisfying',
-          /strip-ansi/
-        ).and(
-          'as array',
-          'to have an item satisfying',
-          /webpack\.config\.fixture\.js$/
+          'to satisfy',
+          new Set([
+            /webpack-dep\.fixture\.js/,
+            /strip-ansi/,
+            /webpack\.config\.fixture\.js/
+          ])
         );
       });
     });

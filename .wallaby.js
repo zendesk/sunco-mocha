@@ -25,7 +25,11 @@ module.exports = () => {
       'package.json',
       'test/opts/mocha.opts',
       'mocharc.yml',
-      '!lib/browser/growl.js'
+      '!lib/browser/growl.js',
+      {
+        pattern: 'test/integration/fixtures/cli/mode_nodules/**',
+        instrument: false
+      }
     ],
     filesWithNoCoverageCalculated: [
       'test/**/*.fixture*',
