@@ -30,18 +30,16 @@ describe('dependency resolution', function() {
     const resolver = rewiremock.proxy(
       () => require('../../../lib/cli/resolver'),
       r => ({
-        '../../../lib/errors': r
-          .with({
-            warn: stubs.warn
-          })
-          .callThrough(),
         fs: r
           .with({
+            // tests can modify this stub to change its behavior
             existsSync: stubs.existsSync
           })
           .callThrough(),
         '../../../lib/utils': r
           .with({
+            // this causes the code to look for these filenames instead of the default
+            // (e.g., `tsconfig.json` and `webpack.config.js`)
             defineConstants: stubs.defineConstants.returns({
               DEFAULT_TS_CONFIG_FILENAME: 'tsconfig.fixture.json',
               DEFAULT_WEBPACK_CONFIG_FILENAME: 'webpack.config.fixture.js'
@@ -119,19 +117,13 @@ describe('dependency resolution', function() {
         });
 
         it('should use the found TS config file', function() {
+          const fixture = resolveFixturePath('cli/index.fixture.ts');
           expect(
-            resolveDependencies(
-              resolveFixturePath('cli/index.fixture.ts'),
-              // change cwd to the directory of the fixture tsconfig file
-              {cwd: path.join(__dirname, '..', 'fixtures', 'cli')}
-            ),
-            'as array',
-            'to have an item satisfying',
-            /glob/
-          ).and(
-            'as array',
-            'to have an item satisfying',
-            /tsconfig\.fixture\.json$/
+            resolveDependencies(fixture, {
+              cwd: path.dirname(fixture) // cwd is needed to find default config file
+            }),
+            'to satisfy',
+            new Set([/node_modules\/glob/, /tsconfig\.fixture\.json/])
           );
         });
       });
@@ -153,10 +145,12 @@ describe('dependency resolution', function() {
 
     describe('when not provided a path to a Webpack config file', function() {
       let result;
+      let fixture;
 
       beforeEach(function() {
-        result = resolveDependencies(resolveFixturePath('cli/webpack'), {
-          cwd: path.join(__dirname, '..', 'fixtures', 'cli')
+        fixture = resolveFixturePath('cli/webpack');
+        result = resolveDependencies(fixture, {
+          cwd: path.dirname(fixture) // cwd is needed to find the default config file
         });
       });
 
@@ -174,13 +168,7 @@ describe('dependency resolution', function() {
       it('should look for a Webpack config file in cwd', function() {
         expect(stubs.existsSync, 'to have a call satisfying', [
           new RegExp(
-            `${path.join(
-              __dirname,
-              '..',
-              'fixtures',
-              'cli',
-              'webpack.config.fixture.js'
-            )}`
+            `${path.join(path.dirname(fixture), 'webpack.config.fixture.js')}`
           )
         ]);
       });
