@@ -1,5 +1,6 @@
 'use strict';
 
+const {castArray} = require('../../../lib/utils');
 const rewiremock = require('rewiremock/node');
 const sinon = require('sinon');
 const path = require('path');
@@ -14,17 +15,32 @@ describe('module-map', function() {
   describe('class ModuleMap', function() {
     let stubs;
     let mocks;
+    /**
+     * @type {import('../../../lib/cli/module-map').ModuleMap}
+     */
     let moduleMap;
+    /**
+     * @type {typeof import('../../../lib/cli/module-map').ModuleMap}
+     */
     let ModuleMap;
 
     beforeEach(function() {
       const ModuleMapNode = sinon.spy(
-        (filename, {children = [], parents = [], entryFiles = []} = {}) => {
-          return Object.assign(
-            Object.create({toJSON: sinon.stub().returnsThis()}),
-            {filename, children, parents, entryFiles}
-          );
-        }
+        (filename, {children = [], parents = [], entryFiles = []} = {}) =>
+          Object.create({
+            toJSON() {
+              return {
+                filename: this.filename,
+                children: [...this.children],
+                parents: [...this.parents],
+                entryFiles: [...this.entryFiles]
+              };
+            },
+            filename,
+            children: new Set(castArray(children)),
+            parents: new Set(castArray(parents)),
+            entryFiles: new Set(castArray(entryFiles))
+          })
       );
       ModuleMapNode.create = ModuleMapNode;
 
@@ -81,7 +97,7 @@ describe('module-map', function() {
         })
       );
       ModuleMap = moduleMapModule.ModuleMap;
-      sinon.stub(ModuleMap.prototype, 'cwd').get(() => CWD);
+      stubs.cwd = sinon.stub(ModuleMap.prototype, 'cwd').get(() => CWD);
     });
 
     describe('constructor', function() {
@@ -138,9 +154,10 @@ describe('module-map', function() {
 
       describe('_init()', function() {
         beforeEach(function() {
-          sinon.stub(moduleMap, '_getChangedFiles').returns([]);
+          sinon.stub(moduleMap, 'getChangedFiles').returns([]);
           sinon.stub(moduleMap, '_populate').returnsThis();
-          sinon.stub(moduleMap, 'save').returnsThis();
+          sinon.stub(moduleMap, 'persistModuleMapCache').returnsThis();
+          sinon.stub(moduleMap, 'persistFileEntryCache').returnsThis();
           sinon.stub(moduleMap, 'mergeFromCache').returnsThis();
           sinon.stub(moduleMap, 'resetModuleMapCache').returnsThis();
           sinon.stub(moduleMap, 'resetFileEntryCache').returnsThis();
@@ -163,7 +180,7 @@ describe('module-map', function() {
 
         describe('when entry files have changed', function() {
           beforeEach(function() {
-            moduleMap._getChangedFiles.returns(['/some/file.js']);
+            moduleMap.getChangedFiles.returns(['/some/file.js']);
             moduleMap._init();
           });
 
@@ -174,7 +191,7 @@ describe('module-map', function() {
           });
 
           it('should look for known changed files', function() {
-            expect(moduleMap._getChangedFiles, 'was called once');
+            expect(moduleMap.getChangedFiles, 'was called once');
           });
 
           it('should populate starting from entry files', function() {
@@ -184,8 +201,12 @@ describe('module-map', function() {
             ]);
           });
 
-          it('should persist the caches', function() {
-            expect(moduleMap.save, 'was called once');
+          it('should persist the module map cache', function() {
+            expect(moduleMap.persistModuleMapCache, 'was called once');
+          });
+
+          it('should not persist the file entry cache', function() {
+            expect(moduleMap.persistFileEntryCache, 'was not called');
           });
         });
 
@@ -223,6 +244,153 @@ describe('module-map', function() {
 
           it('should reset the file entry cache', function() {
             expect(moduleMap.resetFileEntryCache, 'was called once');
+          });
+        });
+      });
+
+      describe('delete()', function() {
+        describe('when deleting a child', function() {
+          beforeEach(function() {
+            moduleMap.set(
+              '/some/file.js',
+              mocks.ModuleMapNode.create('/some/file.js', {
+                children: ['/some/child.js', '/some/other/child.js']
+              })
+            );
+            moduleMap.set(
+              '/some/other/file.js',
+              mocks.ModuleMapNode.create('/some/other/file.js')
+            );
+            moduleMap.set(
+              '/some/child.js',
+              mocks.ModuleMapNode.create('/some/child.js', {
+                parents: ['/some/file.js']
+              })
+            );
+            moduleMap.set(
+              '/some/other/child.js',
+              mocks.ModuleMapNode.create('/some/other/child.js', {
+                parents: ['/some/file.js']
+              })
+            );
+          });
+
+          it('should remove the child from all parents', function() {
+            moduleMap.delete('/some/other/child.js');
+            expect(
+              moduleMap,
+              'to exhaustively satisfy',
+              new Map([
+                [
+                  '/some/file.js',
+                  mocks.ModuleMapNode.create('/some/file.js', {
+                    children: ['/some/child.js']
+                  })
+                ],
+                [
+                  '/some/other/file.js',
+                  mocks.ModuleMapNode.create('/some/other/file.js', {
+                    children: []
+                  })
+                ],
+                [
+                  '/some/child.js',
+                  mocks.ModuleMapNode.create('/some/child.js', {
+                    parents: ['/some/file.js']
+                  })
+                ]
+              ])
+            );
+          });
+        });
+
+        describe('when deletion creates orphaned children', function() {
+          beforeEach(function() {
+            moduleMap.set(
+              '/some/file.js',
+              mocks.ModuleMapNode.create('/some/file.js', {
+                children: ['/some/child.js', '/some/other/child.js']
+              })
+            );
+            moduleMap.set(
+              '/some/other/file.js',
+              mocks.ModuleMapNode.create('/some/other/file.js')
+            );
+            moduleMap.set(
+              '/some/child.js',
+              mocks.ModuleMapNode.create('/some/child.js', {
+                parents: ['/some/file.js']
+              })
+            );
+            moduleMap.set(
+              '/some/other/child.js',
+              mocks.ModuleMapNode.create('/some/other/child.js', {
+                parents: ['/some/file.js']
+              })
+            );
+          });
+
+          it('should delete orphaned children (cascading delete)', function() {
+            moduleMap.delete('/some/file.js');
+            expect(moduleMap, 'to have size', 1).and(
+              'to exhaustively satisfy',
+              new Map([
+                [
+                  '/some/other/file.js',
+                  mocks.ModuleMapNode.create('/some/other/file.js')
+                ]
+              ])
+            );
+          });
+        });
+
+        describe('when deletion does not create orphaned children', function() {
+          beforeEach(function() {
+            moduleMap.set(
+              '/some/file.js',
+              mocks.ModuleMapNode.create('/some/file.js', {
+                children: ['/some/child.js', '/some/other/child.js']
+              })
+            );
+            moduleMap.set(
+              '/some/other/file.js',
+              mocks.ModuleMapNode.create('/some/other/file.js', {
+                children: ['/some/other/child.js']
+              })
+            );
+            moduleMap.set(
+              '/some/child.js',
+              mocks.ModuleMapNode.create('/some/child.js', {
+                parents: ['/some/file.js']
+              })
+            );
+            moduleMap.set(
+              '/some/other/child.js',
+              mocks.ModuleMapNode.create('/some/other/child.js', {
+                parents: ['/some/other/file.js', '/some/file.js']
+              })
+            );
+          });
+
+          it('should not delete children having other parents', function() {
+            moduleMap.delete('/some/file.js');
+            expect(moduleMap, 'to have size', 2).and(
+              'to exhaustively satisfy',
+              new Map([
+                [
+                  '/some/other/file.js',
+                  mocks.ModuleMapNode.create('/some/other/file.js', {
+                    children: ['/some/other/child.js']
+                  })
+                ],
+                [
+                  '/some/other/child.js',
+                  mocks.ModuleMapNode.create('/some/other/child.js', {
+                    parents: ['/some/other/file.js']
+                  })
+                ]
+              ])
+            );
           });
         });
       });
@@ -398,19 +566,19 @@ describe('module-map', function() {
 
       describe('getChangedFiles()', function() {
         beforeEach(function() {
-          sinon.stub(moduleMap, '_getChangedFiles');
+          sinon.stub(moduleMap, 'getChangedFiles');
           sinon.stub(moduleMap, 'persistFileEntryCache');
         });
 
-        it('should delegate to _getChangedFiles', function() {
-          const result = moduleMap.getChangedFiles();
-          expect(moduleMap._getChangedFiles, 'to have a call satisfying', {
+        it('should delegate to `getChangedFiles`', function() {
+          const result = moduleMap.popChangedFiles();
+          expect(moduleMap.getChangedFiles, 'to have a call satisfying', {
             returnValue: result
           }).and('was called once');
         });
 
         it('should persist the file entry cache', function() {
-          moduleMap.getChangedFiles();
+          moduleMap.popChangedFiles();
           expect(moduleMap.persistFileEntryCache, 'was called once');
         });
       });
@@ -460,23 +628,113 @@ describe('module-map', function() {
           });
         });
       });
-    });
 
-    describe('computed properties', function() {
-      beforeEach(function() {
-        sinon.stub(ModuleMap.prototype, '_init');
-        moduleMap = new ModuleMap({
-          entryFiles: ['/some/file.js', '/some/other/path.js']
+      describe('addEntryFile()', function() {
+        beforeEach(function() {
+          stubs.cwd.restore();
+          sinon.stub(moduleMap, 'cwd').get(() => '/some/farm/animals');
+          sinon.stub(moduleMap, '_populate');
+          sinon.spy(moduleMap, 'set');
+          sinon.spy(moduleMap.entryFiles, 'add');
+        });
+
+        describe('when provided a relative filepath', function() {
+          it('should resolve the filepath relative to the `cwd` prop', function() {
+            moduleMap.addEntryFile('foo.js');
+            expect(moduleMap.entryFiles.add, 'to have a call satisfying', [
+              '/some/farm/animals/foo.js'
+            ]);
+          });
+        });
+
+        describe('when provided a file which is already known but not an entry file', function() {
+          beforeEach(function() {
+            sinon
+              .stub(moduleMap, 'has')
+              .withArgs('/some/farm/animals/foo.js')
+              .returns(true);
+            moduleMap.addEntryFile('/some/farm/animals/foo.js');
+          });
+
+          it('should add the entry file', function() {
+            expect(moduleMap.entryFiles.add, 'was called once');
+          });
+
+          it('should not attempt to re-populate from an already known file', function() {
+            moduleMap.addEntryFile('/some/farm/animals/foo.js');
+            expect(moduleMap._populate, 'was not called');
+          });
+        });
+
+        describe('when provided a file which is already an entry file', function() {
+          beforeEach(function() {
+            moduleMap.entryFiles.add('/some/farm/animals/foo.js');
+            sinon
+              .stub(moduleMap, 'has')
+              .withArgs('/some/farm/animals/foo.js')
+              .returns(true);
+          });
+
+          it('should not attempt to add the entry file', function() {
+            moduleMap.addEntryFile('/some/farm/animals/foo.js');
+            expect(moduleMap.entryFiles.add, 'was called once');
+          });
+
+          it('should not attempt to re-populate from an already known file', function() {
+            moduleMap.addEntryFile('/some/farm/animals/foo.js');
+            expect(moduleMap._populate, 'was not called');
+          });
         });
       });
+    });
 
-      describe('entryDirs', function() {
-        it('should return a set of all directories in which entry files live', function() {
-          expect(
-            moduleMap.entryDirs,
-            'to equal',
-            new Set([path.dirname('/some/file.js'), '/some/other'])
-          );
+    describe('interesting computed properties', function() {
+      beforeEach(function() {
+        sinon.stub(ModuleMap.prototype, '_init');
+        moduleMap = new ModuleMap();
+      });
+
+      describe('getters', function() {
+        describe('entryDirectories', function() {
+          beforeEach(function() {
+            sinon
+              .stub(moduleMap, 'entryFiles')
+              .get(() => new Set(['/some/file.js', '/some/other/path.js']));
+          });
+
+          it('should return a set of all parent directories of entry files', function() {
+            expect(
+              moduleMap.entryDirectories,
+              'to equal',
+              new Set(['/some', '/some/other'])
+            );
+          });
+        });
+
+        describe('directories', function() {
+          beforeEach(function() {
+            sinon
+              .stub(moduleMap, 'files')
+              .get(() => new Set(['/some/file.js', '/some/other/path.js']));
+          });
+
+          it('should return a set of all parent directories of all files', function() {
+            expect(
+              moduleMap.directories,
+              'to equal',
+              new Set(['/some', '/some/other'])
+            );
+          });
+        });
+
+        describe('files', function() {
+          beforeEach(function() {
+            sinon.stub(moduleMap, 'keys').returns(new Set(['a', 'b', 'c']));
+          });
+
+          it('should return a Set of all keys', function() {
+            expect(moduleMap.files, 'to equal', new Set(['a', 'b', 'c']));
+          });
         });
       });
     });
