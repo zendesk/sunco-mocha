@@ -377,15 +377,6 @@ function resolveFixturePath(fixture) {
 }
 
 /**
- * Returns an absolute fixture filepath
- * @param {string} fixture - Fixture name
- * @param {string} [cwd] - Current working directory
- */
-function absoluteFixturePath(fixture, cwd = process.cwd()) {
-  return path.resolve(cwd, resolveFixturePath(fixture));
-}
-
-/**
  * Parses some `mocha` reporter output and returns a summary based on the "epilogue"
  * @param {string} res - Typically output of STDOUT from the 'spec' reporter
  * @returns {Summary}
@@ -551,7 +542,6 @@ function sleep(time) {
 module.exports = {
   DEFAULT_FIXTURE,
   SPLIT_DOT_REPORTER_REGEXP,
-  absoluteFixturePath,
   copyFixture,
   createTempDir,
   escapeRegExp,

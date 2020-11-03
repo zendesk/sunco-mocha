@@ -3,18 +3,18 @@
 const {ModuleMap} = require('../../../lib/cli/module-map');
 const {ModuleMapNode} = require('../../../lib/cli/module-map-node');
 const sinon = require('sinon');
-const {absoluteFixturePath} = require('../helpers');
+const {resolveFixturePath} = require('../helpers');
 
 const TEST_MODULE_MAP_CACHE_FILENAME = 'module-map-integration-test.cache.json';
 const TEST_FILE_ENTRY_CACHE_FILENAME = 'file-entry-integration-test.cache.json';
-const TEST_WITH_DEP_PATH = absoluteFixturePath(
+const TEST_WITH_DEP_PATH = resolveFixturePath(
   'options/watch/test-with-dependency'
 );
-const DEP_PATH = absoluteFixturePath('options/watch/dependency');
-const TEST_WITH_TRANSITIVE_DEP_PATH = absoluteFixturePath(
+const DEP_PATH = resolveFixturePath('options/watch/dependency');
+const TEST_WITH_TRANSITIVE_DEP_PATH = resolveFixturePath(
   'options/watch/test-with-transitive-dep'
 );
-const TRANSITIVE_DEP_PATH = absoluteFixturePath('options/watch/transitive-dep');
+const TRANSITIVE_DEP_PATH = resolveFixturePath('options/watch/transitive-dep');
 
 describe('module-map', function() {
   /**
@@ -81,7 +81,7 @@ describe('module-map', function() {
         });
 
         it('should inspect only new (unknown) entry files', function() {
-          const someOtherFile = absoluteFixturePath(
+          const someOtherFile = resolveFixturePath(
             'options/watch/test-file-change'
           );
           const map2 = ModuleMap.create({
@@ -104,7 +104,7 @@ describe('module-map', function() {
 
       describe('when known files were not previously persisted to file entry cache', function() {
         it('should inspect all entry files', function() {
-          const someOtherFile = absoluteFixturePath(
+          const someOtherFile = resolveFixturePath(
             'options/watch/test-file-change'
           );
           const map2 = ModuleMap.create({
@@ -143,7 +143,7 @@ describe('module-map', function() {
         let someOtherFile;
 
         beforeEach(function() {
-          someOtherFile = absoluteFixturePath('options/watch/test-file-change');
+          someOtherFile = resolveFixturePath('options/watch/test-file-change');
           sinon
             .stub(ModuleMap.prototype, 'getChangedFiles')
             .returns([TEST_WITH_DEP_PATH, someOtherFile]);
@@ -407,7 +407,7 @@ describe('module-map', function() {
       it('should return no affected files', function() {
         expect(
           moduleMap.findAffectedFiles({
-            knownChangedFiles: [absoluteFixturePath('options/watch/hook')]
+            knownChangedFiles: [resolveFixturePath('options/watch/hook')]
           }),
           'to equal',
           {entryFiles: new Set(), allFiles: new Set()}
