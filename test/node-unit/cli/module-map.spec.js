@@ -436,12 +436,12 @@ describe('module-map', function() {
 
         describe('when provided "files" option', function() {
           it('should refresh the cache with the provided list of files', function() {
-            const files = new Set(['/some/file.js']);
-            moduleMap.persistFileEntryCache({files});
+            const filenames = new Set(['/some/file.js']);
+            moduleMap.persistFileEntryCache({filenames});
             expect(
               moduleMap._fileEntryCache.normalizeEntries,
               'to have a call satisfying',
-              [[...files]]
+              [[...filenames]]
             ).and('was called once');
           });
         });
@@ -521,7 +521,7 @@ describe('module-map', function() {
             'to have a call satisfying',
             {
               args: [
-                'some-file.js',
+                path.join(moduleMap.cwd, 'some-file.js'),
                 {cwd: moduleMap.cwd, ignore: moduleMap.ignore}
               ],
               returnValue: retval
