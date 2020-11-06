@@ -1003,6 +1003,16 @@ describe('Mocha', function() {
       });
     });
 
+    describe('runAsync()', function() {
+      beforeEach(function() {
+        sinon.stub(mocha, 'run').callsArgWithAsync(0, 4);
+      });
+
+      it('should wrap Mocha#run in a Promise', async function() {
+        return expect(mocha.runAsync(), 'to be fulfilled with', 4);
+      });
+    });
+
     describe('parallelMode()', function() {
       describe('when `Mocha` is running in a browser', function() {
         beforeEach(function() {
