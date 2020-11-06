@@ -73,7 +73,6 @@
     "ms": "2.1.2",
     "multimatch": "4.0.0",
     "nanoid": "3.1.12",
-    "parents": "1.0.1",
     "precinct": "6.3.1",
     "resolve-from": "^5.0.0",
     "serialize-javascript": "4.0.0",

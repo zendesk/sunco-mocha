@@ -1,4 +1,4 @@
-const dependency = require('./dependency.fixture');
+const dependency = require('./lib/dependency');
 
 it('checks dependency', () => {
   if (dependency.testShouldFail === true) {
