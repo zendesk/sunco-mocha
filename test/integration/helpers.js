@@ -426,12 +426,11 @@ async function runMochaWatchAsync(args, opts, change) {
   await change(mochaProcess);
   await sleep(opts.sleepMs);
 
-  if (
-    !(mochaProcess.connected
-      ? mochaProcess.send('SIGINT')
-      : mochaProcess.kill('SIGINT'))
-  ) {
-    throw new Error('failed to send signal to subprocess');
+  if (mochaProcess.connected) {
+    // for forked process
+    mochaProcess.send('SIGINT');
+  } else {
+    mochaProcess.kill('SIGINT');
   }
 
   const res = await resultPromise;
@@ -465,13 +464,20 @@ async function runMochaWatchJSONAsync(args, opts, change) {
     opts,
     change
   );
-  return (
-    res.output
-      // eslint-disable-next-line no-control-regex
-      .replace(/\u001b\[\?25./g, '')
-      .split('\u001b[2K')
-      .map(x => JSON.parse(x))
-  );
+
+  try {
+    return (
+      res.output
+        // eslint-disable-next-line no-control-regex
+        .replace(/\u001b\[\?25./g, '')
+        .split('\u001b[2K')
+        .map(x => JSON.parse(x))
+    );
+  } catch (err) {
+    throw new Error(
+      format("Couldn't parse JSON: %s\n\nOriginal result: %o", err.message, res)
+    );
+  }
 }
 
 /**
@@ -483,6 +489,7 @@ async function runMochaWatchJSONAsync(args, opts, change) {
 function touchFile(filepath) {
   fs.ensureDirSync(path.dirname(filepath));
   touch.sync(filepath);
+  debug('touched %s', filepath);
 }
 
 /**
@@ -518,11 +525,15 @@ function copyFixture(fixtureName, dest) {
  */
 const createTempDir = async () => {
   const dirpath = await fs.mkdtemp(path.join(os.tmpdir(), 'mocha-'));
+  debug('created temp dir %s', dirpath);
   return {
     dirpath,
     removeTempDir: async () => {
       if (!process.env.MOCHA_TEST_KEEP_TEMP_DIRS) {
+        debug('removed temp dir %s', dirpath);
         return fs.remove(dirpath);
+      } else {
+        debug('keeping temp dir %s', dirpath);
       }
     }
   };
