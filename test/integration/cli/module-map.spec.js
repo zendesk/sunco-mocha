@@ -8,13 +8,13 @@ const {resolveFixturePath} = require('../helpers');
 const TEST_MODULE_MAP_CACHE_FILENAME = 'module-map-integration-test.cache.json';
 const TEST_FILE_ENTRY_CACHE_FILENAME = 'file-entry-integration-test.cache.json';
 const TEST_WITH_DEP_PATH = resolveFixturePath(
-  'options/watch/test-with-dependency'
+  'cli/module-map/test-with-dependency'
 );
-const DEP_PATH = resolveFixturePath('options/watch/dependency');
+const DEP_PATH = resolveFixturePath('cli/module-map/dependency');
 const TEST_WITH_TRANSITIVE_DEP_PATH = resolveFixturePath(
-  'options/watch/test-with-transitive-dep'
+  'cli/module-map/test-with-transitive-dep'
 );
-const TRANSITIVE_DEP_PATH = resolveFixturePath('options/watch/transitive-dep');
+const TRANSITIVE_DEP_PATH = resolveFixturePath('cli/module-map/transitive-dep');
 
 describe('module-map', function() {
   /**
@@ -75,14 +75,14 @@ describe('module-map', function() {
         sinon.spy(ModuleMap.prototype, '_populate');
       });
 
-      describe('when known files previously persisted to file entry cache', function() {
+      describe('when known files were previously persisted to file entry cache', function() {
         beforeEach(function() {
           moduleMap.persistFileEntryCache();
         });
 
         it('should inspect only new (unknown) entry files', function() {
           const someOtherFile = resolveFixturePath(
-            'options/watch/test-file-change'
+            'cli/module-map/test-file-change'
           );
           const map2 = ModuleMap.create({
             entryFiles: [
@@ -103,9 +103,13 @@ describe('module-map', function() {
       });
 
       describe('when known files were not previously persisted to file entry cache', function() {
+        beforeEach(function() {
+          moduleMap.resetFileEntryCache();
+        });
+
         it('should inspect all entry files', function() {
           const someOtherFile = resolveFixturePath(
-            'options/watch/test-file-change'
+            'cli/module-map/test-file-change'
           );
           const map2 = ModuleMap.create({
             entryFiles: [
@@ -143,9 +147,9 @@ describe('module-map', function() {
         let someOtherFile;
 
         beforeEach(function() {
-          someOtherFile = resolveFixturePath('options/watch/test-file-change');
+          someOtherFile = resolveFixturePath('cli/module-map/test-file-change');
           sinon
-            .stub(ModuleMap.prototype, 'getChangedFiles')
+            .stub(ModuleMap.prototype, 'popChangedFiles')
             .returns([TEST_WITH_DEP_PATH, someOtherFile]);
         });
 
@@ -242,6 +246,10 @@ describe('module-map', function() {
   });
 
   describe('file entry cache creation/loading', function() {
+    beforeEach(function() {
+      moduleMap.resetFileEntryCache();
+    });
+
     describe('when the cache has not previously been persisted with known files', function() {
       it('should return a cache object containing an empty flat cache', function() {
         expect(moduleMap.createFileEntryCache().cache.all(), 'to be empty');
@@ -303,8 +311,11 @@ describe('module-map', function() {
         moduleMap.resetFileEntryCache();
       });
 
-      it('should contain an empty file entry cache', function() {
-        expect(ModuleMap.create().fileEntryCache.cache.all(), 'to be empty');
+      it('should repopulate the file entry cache', function() {
+        expect(
+          ModuleMap.create().fileEntryCache.cache.all(),
+          'not to be empty'
+        );
       });
     });
 
@@ -346,7 +357,7 @@ describe('module-map', function() {
     describe('when a direct dependency of an entry file is known to have changed', function() {
       it('should return a list of related files', function() {
         expect(
-          moduleMap.findAffectedFiles({
+          moduleMap.findAffectedFilesForChangedFiles({
             knownChangedFiles: [DEP_PATH]
           }),
           'to equal',
@@ -367,9 +378,9 @@ describe('module-map', function() {
     });
 
     describe('when an entry file itself is known to have changed', function() {
-      it('should return a list of related files', function() {
+      it('should return a list of affected files', function() {
         expect(
-          moduleMap.findAffectedFiles({
+          moduleMap.findAffectedFilesForChangedFiles({
             knownChangedFiles: [TEST_WITH_DEP_PATH]
           }),
           'to equal',
@@ -382,9 +393,9 @@ describe('module-map', function() {
     });
 
     describe('when a transitive dependency of an entry file is known to have changed', function() {
-      it('should return a list of related files', function() {
+      it('should return a list of affected files', function() {
         expect(
-          moduleMap.findAffectedFiles({
+          moduleMap.findAffectedFilesForChangedFiles({
             knownChangedFiles: [TRANSITIVE_DEP_PATH]
           }),
           'to equal',
@@ -406,8 +417,8 @@ describe('module-map', function() {
     describe('when a previously-unknown file is known to have changed', function() {
       it('should return no affected files', function() {
         expect(
-          moduleMap.findAffectedFiles({
-            knownChangedFiles: [resolveFixturePath('options/watch/hook')]
+          moduleMap.findAffectedFilesForChangedFiles({
+            knownChangedFiles: [resolveFixturePath('cli/module-map/hook')]
           }),
           'to equal',
           {entryFiles: new Set(), allFiles: new Set()}
