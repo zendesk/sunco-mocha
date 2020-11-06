@@ -47,7 +47,7 @@ describe('module-map', function() {
       mocks = {
         FileEntryCache: {
           destroy: sinon.stub(),
-          getUpdatedFiles: sinon.stub(),
+          getUpdatedFiles: sinon.stub().returns([]),
           reconcile: sinon.stub(),
           hasFileChanged: sinon.stub().returns(true),
           normalizeEntries: sinon.stub().returns([]),
@@ -102,7 +102,7 @@ describe('module-map', function() {
 
     describe('constructor', function() {
       beforeEach(function() {
-        sinon.stub(ModuleMap.prototype, '_init').returnsThis();
+        sinon.stub(ModuleMap.prototype, 'init').returnsThis();
         sinon
           .stub(ModuleMap.prototype, 'createModuleMapCache')
           .returns({...mocks.ModuleMapCache});
@@ -116,7 +116,7 @@ describe('module-map', function() {
       });
 
       it('should initialize', function() {
-        expect(moduleMap._init, 'was called once');
+        expect(moduleMap.init, 'was called once');
       });
 
       it('should create/load a module map cache', function() {
@@ -135,7 +135,7 @@ describe('module-map', function() {
       let moduleMap;
 
       beforeEach(function() {
-        sinon.stub(ModuleMap.prototype, '_init').returnsThis();
+        sinon.stub(ModuleMap.prototype, 'init').returnsThis();
         sinon
           .stub(ModuleMap.prototype, 'createModuleMapCache')
           .returns({...mocks.ModuleMapCache});
@@ -147,14 +147,14 @@ describe('module-map', function() {
           entryFiles: ['/some/file.js', '/some/other/file.js']
         });
 
-        moduleMap._init.restore();
+        moduleMap.init.restore();
         moduleMap.createFileEntryCache.restore();
         moduleMap.createModuleMapCache.restore();
       });
 
-      describe('_init()', function() {
+      describe('init()', function() {
         beforeEach(function() {
-          sinon.stub(moduleMap, 'getChangedFiles').returns([]);
+          sinon.stub(moduleMap, 'popChangedFiles').returns([]);
           sinon.stub(moduleMap, '_populate').returnsThis();
           sinon.stub(moduleMap, 'persistModuleMapCache').returnsThis();
           sinon.stub(moduleMap, 'persistFileEntryCache').returnsThis();
@@ -169,19 +169,45 @@ describe('module-map', function() {
             moduleMap._initialized = true;
           });
 
-          it('should throw', function() {
-            expect(() => moduleMap._init(), 'to throw');
+          describe('when option `force` is falsy', function() {
+            it('should throw', function() {
+              expect(() => moduleMap.init(), 'to throw');
+            });
+          });
+
+          describe('when option `force` is truthy', function() {
+            it('should reinit', function() {
+              expect(() => moduleMap.init({force: true}), 'not to throw');
+            });
           });
         });
 
         it('should return its context', function() {
-          expect(moduleMap._init(), 'to be', moduleMap);
+          expect(moduleMap.init(), 'to be', moduleMap);
+        });
+
+        describe('when node already found for entry file', function() {
+          beforeEach(function() {
+            moduleMap.popChangedFiles.returns(['/some/file.js']);
+            moduleMap.set(
+              '/some/file.js',
+              mocks.ModuleMapNode.create('/some/file.js')
+            );
+            mocks.ModuleMapNode.create.resetHistory();
+            moduleMap.init();
+          });
+
+          it('should not create another node', function() {
+            expect(mocks.ModuleMapNode.create, 'not to have calls satisfying', [
+              '/some/file.js'
+            ]).and('was called once');
+          });
         });
 
         describe('when entry files have changed', function() {
           beforeEach(function() {
-            moduleMap.getChangedFiles.returns(['/some/file.js']);
-            moduleMap._init();
+            moduleMap.popChangedFiles.returns(['/some/file.js']);
+            moduleMap.init();
           });
 
           it('should clear and load from map', function() {
@@ -190,8 +216,8 @@ describe('module-map', function() {
             ]);
           });
 
-          it('should look for known changed files', function() {
-            expect(moduleMap.getChangedFiles, 'was called once');
+          it('should pop changed files (which will persist the file entry cache)', function() {
+            expect(moduleMap.popChangedFiles, 'was called once');
           });
 
           it('should populate starting from entry files', function() {
@@ -204,15 +230,11 @@ describe('module-map', function() {
           it('should persist the module map cache', function() {
             expect(moduleMap.persistModuleMapCache, 'was called once');
           });
-
-          it('should not persist the file entry cache', function() {
-            expect(moduleMap.persistFileEntryCache, 'was not called');
-          });
         });
 
         describe('when no files have changed', function() {
           beforeEach(function() {
-            moduleMap._init();
+            moduleMap.init();
           });
 
           it('should not populate anything', function() {
@@ -222,7 +244,7 @@ describe('module-map', function() {
 
         describe('when provided no options', function() {
           beforeEach(function() {
-            moduleMap._init();
+            moduleMap.init();
           });
 
           it('should not reset the module map cache', function() {
@@ -234,9 +256,9 @@ describe('module-map', function() {
           });
         });
 
-        describe('when option reset = true', function() {
+        describe('when option `reset` is truthy', function() {
           beforeEach(function() {
-            moduleMap._init({reset: true});
+            moduleMap.init({reset: true});
           });
           it('should reset the module map cache', function() {
             expect(moduleMap.resetModuleMapCache, 'was called once');
@@ -564,17 +586,18 @@ describe('module-map', function() {
         });
       });
 
-      describe('getChangedFiles()', function() {
+      describe('popChangedFiles()', function() {
         beforeEach(function() {
-          sinon.stub(moduleMap, 'getChangedFiles');
           sinon.stub(moduleMap, 'persistFileEntryCache');
         });
 
-        it('should delegate to `getChangedFiles`', function() {
-          const result = moduleMap.popChangedFiles();
-          expect(moduleMap.getChangedFiles, 'to have a call satisfying', {
-            returnValue: result
-          }).and('was called once');
+        it('should get updated files from the file entry cache', function() {
+          moduleMap.popChangedFiles();
+          expect(
+            moduleMap.fileEntryCache.getUpdatedFiles,
+            'to have a call satisfying',
+            [[...moduleMap.files]]
+          );
         });
 
         it('should persist the file entry cache', function() {
@@ -690,7 +713,7 @@ describe('module-map', function() {
 
     describe('interesting computed properties', function() {
       beforeEach(function() {
-        sinon.stub(ModuleMap.prototype, '_init');
+        sinon.stub(ModuleMap.prototype, 'init');
         moduleMap = new ModuleMap();
       });
 
