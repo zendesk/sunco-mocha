@@ -456,7 +456,7 @@ async function runMochaWatchAsync(args, opts, change) {
  * @param {string[]} args - Array of argument strings
  * @param {object|string} opts - If a `string`, then `cwd`, otherwise options for `cross-spawn.spawn` or `child_process.fork`
  * @param {Function} change - A potentially `Promise`-returning callback to execute which will change a watched file
- * @returns {Promise<JSONResult>}
+ * @returns {Promise<JSONResult[]>}
  */
 async function runMochaWatchJSONAsync(args, opts, change) {
   const res = await runMochaWatchAsync(
@@ -466,13 +466,12 @@ async function runMochaWatchJSONAsync(args, opts, change) {
   );
 
   try {
-    return (
-      res.output
-        // eslint-disable-next-line no-control-regex
-        .replace(/\u001b\[\?25./g, '')
-        .split('\u001b[2K')
-        .map(x => JSON.parse(x))
-    );
+    const jsonResults = res.output
+      // eslint-disable-next-line no-control-regex
+      .replace(/\u001b\[\?25./g, '')
+      .split('\u001b[2K')
+      .map(output => ({...res, ...JSON.parse(output)}));
+    return jsonResults;
   } catch (err) {
     throw new Error(
       format("Couldn't parse JSON: %s\n\nOriginal result: %o", err.message, res)

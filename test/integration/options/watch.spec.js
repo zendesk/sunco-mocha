@@ -47,15 +47,14 @@ describe('--watch', function() {
               touchFile(testFile);
             }),
             'when fulfilled',
-            'to have length',
-            2
+            'to have run twice'
           );
         });
       });
     });
 
     describe('when --watch-files provided', function() {
-      describe('when file matching --watch-files has changed', function() {
+      describe('when file matching --watch-files has changed', async function() {
         it('should rerun all tests', async function() {
           const testFile = path.join(tempDir, 'test.js');
           copyFixture(DEFAULT_FIXTURE, testFile);
@@ -63,15 +62,17 @@ describe('--watch', function() {
           const watchedFile = path.join(tempDir, 'dir/file.xyz');
           touchFile(watchedFile);
 
-          return runMochaWatchJSONAsync(
-            [testFile, '--watch-files', 'dir/*.xyz'],
-            tempDir,
-            () => {
-              touchFile(watchedFile);
-            }
-          ).then(results => {
-            expect(results.length, 'to equal', 2);
-          });
+          return expect(
+            runMochaWatchJSONAsync(
+              [testFile, '--watch-files', 'dir/*.xyz'],
+              tempDir,
+              () => {
+                touchFile(watchedFile);
+              }
+            ),
+            'when fulfilled',
+            'to have run twice'
+          );
         });
       });
 
@@ -90,8 +91,7 @@ describe('--watch', function() {
               }
             ),
             'when fulfilled',
-            'to have length',
-            2
+            'to have run twice'
           );
         });
       });
@@ -113,8 +113,7 @@ describe('--watch', function() {
               }
             ),
             'when fulfilled',
-            'to have length',
-            2
+            'to have run twice'
           );
         });
       });
@@ -136,8 +135,7 @@ describe('--watch', function() {
               }
             ),
             'when fulfilled',
-            'to have length',
-            1
+            'to have run once'
           );
         });
       });
@@ -165,8 +163,7 @@ describe('--watch', function() {
               }
             ),
             'when fulfilled',
-            'to have length',
-            1
+            'to have run once'
           );
         });
       });
@@ -190,42 +187,37 @@ describe('--watch', function() {
           'when fulfilled',
           'to satisfy',
           [
-            {
-              passes: expect.it('to be empty'),
-              failures: expect.it('to have length', 1)
-            },
-            {
-              passes: expect.it('to have length', 1),
-              failures: expect.it('to be empty')
-            }
+            expect.it('to have passed count', 0).and('to have failed count', 1),
+            expect.it('to have passed count', 1).and('to have failed count', 0)
           ]
-        ).and('when fulfilled', 'to have length', 2);
+        ).and('when fulfilled', 'to have run twice');
       });
 
-      it('reloads test dependencies when they change', function() {
+      it('reloads test dependencies when they change', async function() {
         const testFile = path.join(tempDir, 'test.js');
         copyFixture('options/watch/test-with-dependency', testFile);
 
         const dependency = path.join(tempDir, 'lib', 'dependency.js');
         copyFixture('options/watch/dependency', dependency);
 
-        return runMochaWatchJSONAsync(
-          [testFile, '--watch-files', 'lib/**/*.js'],
-          tempDir,
-          () => {
-            replaceFileContents(
-              dependency,
-              'module.exports.testShouldFail = false',
-              'module.exports.testShouldFail = true'
-            );
-          }
-        ).then(results => {
-          expect(results, 'to have length', 2);
-          expect(results[0].passes, 'to have length', 1);
-          expect(results[0].failures, 'to have length', 0);
-          expect(results[1].passes, 'to have length', 0);
-          expect(results[1].failures, 'to have length', 1);
-        });
+        return expect(
+          runMochaWatchJSONAsync(
+            [testFile, '--watch-files', 'lib/**/*.js'],
+            tempDir,
+            () => {
+              replaceFileContents(
+                dependency,
+                'module.exports.testShouldFail = false',
+                'module.exports.testShouldFail = true'
+              );
+            }
+          ),
+          'when fulfilled',
+          'to have run twice'
+        ).and('when fulfilled', 'to satisfy', [
+          expect.it('to have passed count', 1).and('to have failed count', 0),
+          expect.it('to have passed count', 0).and('to have failed count', 1)
+        ]);
       });
     });
 
@@ -236,12 +228,11 @@ describe('--watch', function() {
           copyFixture(DEFAULT_FIXTURE, testFile);
 
           return expect(
-            runMochaWatchJSONAsync([testFile], tempDir, async () => {
+            runMochaWatchJSONAsync([testFile], tempDir, () => {
               touchFile(testFile);
             }),
             'when fulfilled',
-            'to have length',
-            2
+            'to have run twice'
           );
         });
       });
@@ -259,10 +250,10 @@ describe('--watch', function() {
             'when fulfilled',
             'to satisfy',
             [
-              {passes: expect.it('to have length', 1)},
-              {passes: expect.it('to have length', 2)}
+              expect.it('to have passed count', 1),
+              expect.it('to have passed count', 2)
             ]
-          );
+          ).and('when fulfilled', 'to have run twice');
         });
       });
 
@@ -276,8 +267,7 @@ describe('--watch', function() {
               mochaProcess.stdin.write('rs\n');
             }),
             'when fulfilled',
-            'to have length',
-            2
+            'to have run twice'
           );
         });
       });
@@ -300,26 +290,36 @@ describe('--watch', function() {
               }
             ),
             'when fulfilled',
-            'to have length',
-            2
+            'to have run twice'
           );
         });
 
-        it('reruns test when file starting with . and matching --extension is changed', function() {
-          const testFile = path.join(tempDir, 'test.js');
-          copyFixture(DEFAULT_FIXTURE, testFile);
+        describe('when matching file begins with a dot (.)', function() {
+          it('reruns affected test test', async function() {
+            const testFile = path.join(tempDir, 'test.js');
+            copyFixture(
+              'options/watch/required-dot-extension.fixture.js',
+              testFile
+            );
 
-          const watchedFile = path.join(tempDir, '.file.xyz');
-          touchFile(watchedFile);
+            const watchedFile = path.join(tempDir, '.file.xyz');
+            touchFile(watchedFile);
 
-          return runMochaWatchJSONAsync(
-            [testFile, '--extension', 'xyz,js'],
-            tempDir,
-            () => {
-              touchFile(watchedFile);
-            }
-          ).then(results => {
-            expect(results, 'to have length', 2);
+            return expect(
+              runMochaWatchJSONAsync(
+                [testFile, '--extension', 'xyz,js'],
+                tempDir,
+                () => {
+                  touchFile(watchedFile);
+                }
+              ),
+              'when fulfilled',
+              'to have items satisfying',
+              expect.it(
+                'to have passed test',
+                'should run even if the file it depends upon begins with a dot'
+              )
+            ).and('when fulfilled', 'to have run twice');
           });
         });
 
@@ -347,8 +347,7 @@ describe('--watch', function() {
               }
             ),
             'when fulfilled',
-            'to have length',
-            1
+            'to have run once'
           );
         });
       });
@@ -364,12 +363,11 @@ describe('--watch', function() {
           touchFile(testFile);
         }),
         'when fulfilled',
-        'to satisfy',
-        {
-          length: 2,
-          0: {tests: expect.it('to have length', 2)},
-          1: {tests: expect.it('to have length', 2)}
-        }
+        'to have run twice'
+      ).and(
+        'when fulfilled',
+        'to have items satisfying',
+        expect.it('to have passed count', 2)
       );
     });
 
@@ -381,7 +379,7 @@ describe('--watch', function() {
        * @return {function}
        */
       function setupHookTest(hookName) {
-        return function() {
+        return async function() {
           const testFile = path.join(tempDir, 'test.js');
           const hookFile = path.join(tempDir, 'hook.js');
 
@@ -390,17 +388,21 @@ describe('--watch', function() {
 
           replaceFileContents(hookFile, '<hook>', hookName);
 
-          return runMochaWatchJSONAsync(
-            [testFile, '--require', hookFile],
-            tempDir,
-            () => {
-              touchFile(testFile);
-            }
-          ).then(results => {
-            expect(results.length, 'to equal', 2);
-            expect(results[0].failures, 'to have length', 1);
-            expect(results[1].failures, 'to have length', 1);
-          });
+          return expect(
+            runMochaWatchJSONAsync(
+              [testFile, '--require', hookFile],
+              tempDir,
+              () => {
+                touchFile(testFile);
+              }
+            ),
+            'when fulfilled',
+            'to have run twice'
+          ).and(
+            'when fulfilled',
+            'to have items satisfying',
+            expect.it('to have failed count', 1)
+          );
         };
       }
 
