@@ -76,7 +76,7 @@ describe('--watch', function() {
         });
       });
 
-      describe('when file matching --watch-files has added', function() {
+      describe('when file matching --watch-files has been added', function() {
         it('should rerun all tests', async function() {
           const testFile = path.join(tempDir, 'test.js');
           copyFixture(DEFAULT_FIXTURE, testFile);
@@ -118,7 +118,7 @@ describe('--watch', function() {
         });
       });
 
-      describe('when file not matching --watch-files has changed', function() {
+      describe('when file not matching --watch-files have changed', function() {
         it('does not rerun tests', async function() {
           const testFile = path.join(tempDir, 'test.js');
           copyFixture(DEFAULT_FIXTURE, testFile);
@@ -222,18 +222,123 @@ describe('--watch', function() {
     });
 
     describe('when --watch-files not provided', function() {
-      describe('when a test file is changed', function() {
-        it('should rerun the test file', async function() {
-          const testFile = path.join(tempDir, 'test.js');
-          copyFixture(DEFAULT_FIXTURE, testFile);
+      describe('changes', function() {
+        describe('when a not-depended-upon file has changed', async function() {
+          it('should not rerun anything', async function() {
+            const testFile = path.join(tempDir, 'test.js');
+            copyFixture(DEFAULT_FIXTURE, testFile);
 
-          return expect(
-            runMochaWatchJSONAsync([testFile], tempDir, () => {
-              touchFile(testFile);
-            }),
-            'when fulfilled',
-            'to have run twice'
-          );
+            const randomFile = path.join(tempDir, 'rando.js');
+            touchFile(randomFile);
+
+            return expect(
+              runMochaWatchJSONAsync([testFile], tempDir, () => {
+                touchFile(randomFile);
+              }),
+              'when fulfilled',
+              'to have run once'
+            );
+          });
+        });
+
+        describe('when a test file is changed', function() {
+          it('should rerun the test file', async function() {
+            const testFile = path.join(tempDir, 'test.js');
+            copyFixture(DEFAULT_FIXTURE, testFile);
+
+            return expect(
+              runMochaWatchJSONAsync([testFile], tempDir, () => {
+                touchFile(testFile);
+              }),
+              'when fulfilled',
+              'to have run twice'
+            );
+          });
+        });
+
+        describe('when a dependency has changed', function() {
+          it('should rerun the test file', async function() {
+            const testFile = path.join(tempDir, 'test.js');
+            copyFixture('options/watch/test-with-dependency', testFile);
+            const depFile = path.join(tempDir, 'lib', 'dependency.js');
+            copyFixture('options/watch/dependency', depFile);
+
+            return expect(
+              runMochaWatchJSONAsync([testFile], tempDir, () => {
+                touchFile(depFile);
+              }),
+              'when fulfilled',
+              'to have run twice'
+            ).and(
+              'when fulfilled',
+              'to have items satisfying',
+              expect.it('to have passed test', 'checks dependency')
+            );
+          });
+        });
+
+        describe('when a transitive dependency has changed', function() {
+          it('should rerun the test file', async function() {
+            const testFile = path.join(tempDir, 'test.js');
+            copyFixture('options/watch/test-with-transitive-dep', testFile);
+            const transitiveDepFile = path.join(
+              tempDir,
+              'transitive-dep.fixture.js'
+            );
+            copyFixture('options/watch/transitive-dep', transitiveDepFile);
+            const depFile = path.join(tempDir, 'dependency.fixture.js');
+            copyFixture('options/watch/dependency', depFile);
+
+            return expect(
+              runMochaWatchJSONAsync([testFile], tempDir, () => {
+                touchFile(transitiveDepFile);
+              }),
+              'when fulfilled',
+              'to have run twice'
+            ).and(
+              'when fulfilled',
+              'to have items satisfying',
+              expect.it('to have passed test', 'checks dependency')
+            );
+          });
+        });
+      });
+
+      describe('deletion', function() {
+        describe('when a test file was deleted', function() {
+          it('should not rerun tests', async function() {
+            const testFile = path.join(tempDir, 'test.js');
+            copyFixture(DEFAULT_FIXTURE, testFile);
+
+            return expect(
+              runMochaWatchJSONAsync([testFile], tempDir, async () =>
+                fs.remove(testFile)
+              ),
+              'when fulfilled',
+              'to have run once'
+            );
+          });
+        });
+
+        describe('when a dependency was deleted', function() {
+          it('should rerun the test file', async function() {
+            const testFile = path.join(tempDir, 'test.js');
+            copyFixture('options/watch/test-with-dependency', testFile);
+            const depFile = path.join(tempDir, 'lib', 'dependency.js');
+            copyFixture('options/watch/dependency', depFile);
+
+            return expect(
+              runMochaWatchJSONAsync([testFile], tempDir, async () =>
+                fs.remove(depFile)
+              ),
+              'when fulfilled',
+              'to have run twice'
+            ).and(
+              'when fulfilled',
+              'to have items satisfying',
+              expect.it('to have passed test', 'checks dependency')
+            );
+          });
         });
       });
 
@@ -271,13 +376,36 @@ describe('--watch', function() {
           );
         });
       });
+
+      // Regression test for https://github.com/mochajs/mocha/issues/2027
+      it('respects --fgrep on re-runs', async function() {
+        const testFile = path.join(tempDir, 'test.js');
+        copyFixture('options/grep', testFile);
+
+        return expect(
+          runMochaWatchJSONAsync(
+            [testFile, '--fgrep', 'match'],
+            tempDir,
+            () => {
+              touchFile(testFile);
+            },
+            {cwd: tempDir}
+          ),
+          'when fulfilled',
+          'to have run twice'
+        ).and(
+          'when fulfilled',
+          'to have items satisfying',
+          expect.it('to have passed count', 2)
+        );
+      });
     });
 
     describe('when `--extension` provided', function() {
       describe('when file matching `--extension` is changed', function() {
         it('should rerun all tests', async function() {
           const testFile = path.join(tempDir, 'test.js');
-          copyFixture('options/watch/required-extension.fixture.js', testFile);
+          copyFixture('options/watch/required-extension', testFile);
           const watchedFile = path.join(tempDir, 'file.xyz');
           touchFile(watchedFile);
 
@@ -297,10 +425,7 @@ describe('--watch', function() {
         describe('when matching file begins with a dot (.)', function() {
           it('reruns affected test test', async function() {
             const testFile = path.join(tempDir, 'test.js');
-            copyFixture(
-              'options/watch/required-dot-extension.fixture.js',
-              testFile
-            );
+            copyFixture('options/watch/required-dot-extension', testFile);
 
             const watchedFile = path.join(tempDir, '.file.xyz');
             touchFile(watchedFile);
@@ -351,24 +476,6 @@ describe('--watch', function() {
           );
         });
       });
-    });
-
-    // Regression test for https://github.com/mochajs/mocha/issues/2027
-    it('respects --fgrep on re-runs', async function() {
-      const testFile = path.join(tempDir, 'test.js');
-      copyFixture('options/grep', testFile);
-
-      return expect(
-        runMochaWatchJSONAsync([testFile, '--fgrep', 'match'], tempDir, () => {
-          touchFile(testFile);
-        }),
-        'when fulfilled',
-        'to have run twice'
-      ).and(
-        'when fulfilled',
-        'to have items satisfying',
-        expect.it('to have passed count', 2)
-      );
     });
 
     describe('with required hooks', function() {

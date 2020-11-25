@@ -1,5 +1,6 @@
 'use strict';
 
+const setTimeout = global.setTimeout;
 const escapeRegExp = require('escape-string-regexp');
 const os = require('os');
 const fs = require('fs-extra');
@@ -27,6 +28,22 @@ const DEFAULT_FIXTURE = '__default__';
  * Path to "default" fixture file
  */
 const DEFAULT_FIXTURE_PATH = resolveFixturePath(DEFAULT_FIXTURE);
+
+/**
+ * Waits for `time` ms.
+ * @see https://nodejs.org/api/timers.html#timers_timerspromises_settimeout_delay_value_options
+ * @type {(ms: number) => Promise<void>}
+ */
+let sleep;
+
+try {
+  sleep = require('timers/promises').setTimeout;
+} catch (ignored) {
+  sleep = async ms =>
+    new Promise(resolve => {
+      setTimeout(resolve, ms);
+    });
+}
 
 /**
  * Invokes the mocha binary for the given fixture with color output disabled.
@@ -528,26 +545,15 @@ const createTempDir = async () => {
   return {
     dirpath,
     removeTempDir: async () => {
-      if (!process.env.MOCHA_TEST_KEEP_TEMP_DIRS) {
-        debug('removed temp dir %s', dirpath);
-        return fs.remove(dirpath);
-      } else {
+      if (process.env.MOCHA_TEST_KEEP_TEMP_DIRS) {
         debug('keeping temp dir %s', dirpath);
+      } else {
+        await fs.remove(dirpath);
+        debug('removed temp dir %s', dirpath);
       }
     }
   };
 };
-
-/**
- * Waits for `time` ms.
- * @param {number} time - Time in ms
- * @returns {Promise<void>}
- */
-function sleep(time) {
-  return new Promise(resolve => {
-    setTimeout(resolve, time);
-  });
-}
 
 module.exports = {
   DEFAULT_FIXTURE,

@@ -1,6 +1,7 @@
 'use strict';
 
 const {version} = require('../package.json');
+const escapeStringRegexp = require('escape-string-regexp');
 
 const JSON_RESULT = 'JSONResult';
 const RAW_RESULT = 'RawResult';
@@ -264,9 +265,9 @@ module.exports = {
           expect(
             result[state].slice(0, titles.length),
             '[not] to satisfy',
-            titles.map(function(title) {
-              return typeof title === 'string' ? {title: title} : title;
-            })
+            titles.map(title =>
+              typeof title === 'string' ? {title: title} : title
+            )
           );
         }
       )
@@ -355,7 +356,18 @@ module.exports = {
         }
       )
       .addAssertion(
-        `<${RAW_RESULT}|SummarizedResult|JSONResult> to have [exit] code <number>`,
+        `<${RAW_RESULT}|${SUMMARIZED_RESULT}> to contain once <regexp|string>`,
+        (expect, {output}, value) => {
+          // this assertion could use a custom diff
+          value = new RegExp(
+            typeof value === 'string' ? escapeStringRegexp(value) : value,
+            'g'
+          );
+          expect(output.match(value), 'to have length', 1);
+        }
+      )
+      .addAssertion(
+        `<${RAW_RESULT}|${SUMMARIZED_RESULT}|${JSON_RESULT}> to have [exit] code <number>`,
         (expect, result, code) => {
           expect(result.code, 'to be', code);
         }

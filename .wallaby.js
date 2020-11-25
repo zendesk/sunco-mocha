@@ -25,11 +25,7 @@ module.exports = () => {
       'package.json',
       'test/opts/mocha.opts',
       'mocharc.yml',
-      '!lib/browser/growl.js',
-      {
-        pattern: 'test/integration/fixtures/cli/mode_nodules/**',
-        instrument: false
-      }
+      '!lib/browser/growl.js'
     ],
     filesWithNoCoverageCalculated: [
       'test/**/*.fixture*',
@@ -39,12 +35,7 @@ module.exports = () => {
       'test/integration/helpers.js',
       'bin/*'
     ],
-    tests: [
-      'test/unit/**/*.spec.js',
-      'test/node-unit/**/*.spec.js',
-      'test/integration/cli/module-map.spec.js',
-      'test/integration/cli/resolver.spec.js'
-    ],
+    tests: ['test/unit/**/*.spec.js', 'test/node-unit/**/*.spec.js'],
     env: {
       type: 'node',
       runner: 'node',
