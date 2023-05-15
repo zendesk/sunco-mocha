@@ -1,5 +1,5 @@
 {
-  "name": "mocha",
+  "name": "@zendesk/mocha",
   "version": "9.1.4",
   "description": "simple, flexible, fun test framework",
   "keywords": [
