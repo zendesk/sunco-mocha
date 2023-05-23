@@ -10,12 +10,14 @@
  * @private
  */
 
+const os = require('os');
 const {loadOptions} = require('../lib/cli/options');
 const {
   unparseNodeFlags,
   isNodeFlag,
   impliesNoTimeouts
 } = require('../lib/cli/node-flags');
+const {fatalSignals} = require('../lib/cli/signals');
 const unparse = require('yargs-unparser');
 const debug = require('debug')('mocha:cli:mocha');
 const {aliases} = require('../lib/cli/run-option-metadata');
@@ -109,7 +111,12 @@ if (mochaArgs['node-option'] || Object.keys(nodeArgs).length || hasInspect) {
   proc.on('exit', (code, signal) => {
     process.on('exit', () => {
       if (signal) {
-        process.kill(process.pid, signal);
+        if (mochaArgs['posix-exit-codes'] === true) {
+          process.exitCode = 128 + os.constants.signals[signal];
+          process.exit(process.exitCode);
+        } else {
+          process.kill(process.pid, signal);
+        }
       } else {
         process.exit(code);
       }
@@ -126,7 +133,7 @@ if (mochaArgs['node-option'] || Object.keys(nodeArgs).length || hasInspect) {
     // be needed.
     if (!args.parallel || args.jobs < 2) {
       // win32 does not support SIGTERM, so use next best thing.
-      if (require('os').platform() === 'win32') {
+      if (os.platform() === 'win32') {
         proc.kill('SIGKILL');
       } else {
         // using SIGKILL won't cleanly close the output streams, which can result
@@ -138,5 +145,14 @@ if (mochaArgs['node-option'] || Object.keys(nodeArgs).length || hasInspect) {
   });
 } else {
   debug('running Mocha in-process');
+  if (mochaArgs['posix-exit-codes'] === true) {
+    fatalSignals.forEach(sig => {
+      process.on(sig, () => {
+        process.exitCode = 128 + os.constants.signals[sig];
+        debug(`exiting on ${sig} with exit code ${process.exitCode}`);
+        process.exit(process.exitCode);
+      });
+    });
+  }
   require('../lib/cli/cli').main([], mochaArgs);
 }
