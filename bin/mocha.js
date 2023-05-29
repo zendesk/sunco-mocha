@@ -17,7 +17,6 @@ const {
   isNodeFlag,
   impliesNoTimeouts
 } = require('../lib/cli/node-flags');
-const {fatalSignals} = require('../lib/cli/signals');
 const unparse = require('yargs-unparser');
 const debug = require('debug')('mocha:cli:mocha');
 const {aliases} = require('../lib/cli/run-option-metadata');
@@ -145,14 +144,5 @@ if (mochaArgs['node-option'] || Object.keys(nodeArgs).length || hasInspect) {
   });
 } else {
   debug('running Mocha in-process');
-  if (mochaArgs['posix-exit-codes'] === true) {
-    fatalSignals.forEach(sig => {
-      process.on(sig, () => {
-        process.exitCode = 128 + os.constants.signals[sig];
-        debug(`exiting on ${sig} with exit code ${process.exitCode}`);
-        process.exit(process.exitCode);
-      });
-    });
-  }
   require('../lib/cli/cli').main([], mochaArgs);
 }

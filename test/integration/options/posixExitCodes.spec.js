@@ -20,20 +20,6 @@ describe('--posix-exit-codes', function () {
     process.removeListener('SIGINT', killSubprocess);
   });
 
-  describe('when enabled without node options', function () {
-    it('should exit with code 134 on SIGABRT', function (done) {
-      var fixture = 'posix-exit-codes.fixture.js';
-      var args = ['--posix-exit-codes'];
-      mocha = runMocha(fixture, args, function postmortem(err, res) {
-        if (err) {
-          return done(err);
-        }
-        expect(res.code, 'to be', 134);
-        done();
-      });
-    });
-  });
-
   describe('when enabled with node options', function () {
     it('should exit with code 134 on SIGABRT', function (done) {
       var fixture = 'posix-exit-codes.fixture.js';
