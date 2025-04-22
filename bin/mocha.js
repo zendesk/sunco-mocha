@@ -64,7 +64,7 @@ Object.keys(opts).forEach(opt => {
 // disable 'timeout' for debugFlags
 Object.keys(nodeArgs).forEach(opt => disableTimeouts(opt));
 mochaArgs['node-option'] &&
-mochaArgs['node-option'].forEach(opt => disableTimeouts(opt));
+  mochaArgs['node-option'].forEach(opt => disableTimeouts(opt));
 
 // Native debugger handling
 // see https://nodejs.org/api/debugger.html#debugger_debugger
@@ -81,82 +81,74 @@ if (mochaArgs._) {
   }
 }
 
-const {spawn} = require('child_process');
-const mochaPath = require.resolve('../lib/cli/cli.js');
+if (mochaArgs['node-option'] || Object.keys(nodeArgs).length || hasInspect) {
+  const {spawn} = require('child_process');
+  const mochaPath = require.resolve('../lib/cli/cli.js');
 
-const nodeArgv =
-  (mochaArgs['node-option'] && mochaArgs['node-option'].map(v => '--' + v)) ||
-  unparseNodeFlags(nodeArgs);
+  const nodeArgv =
+    (mochaArgs['node-option'] && mochaArgs['node-option'].map(v => '--' + v)) ||
+    unparseNodeFlags(nodeArgs);
 
-if (hasInspect) nodeArgv.unshift('inspect');
-delete mochaArgs['node-option'];
+  if (hasInspect) nodeArgv.unshift('inspect');
+  delete mochaArgs['node-option'];
 
-debug('final node argv', nodeArgv);
+  debug('final node argv', nodeArgv);
 
-const args = [].concat(
-  nodeArgv,
-  mochaPath,
-  unparse(mochaArgs, {alias: aliases})
-);
+  const args = [].concat(
+    nodeArgv,
+    mochaPath,
+    unparse(mochaArgs, {alias: aliases})
+  );
 
-debug(
-  'forking child process via command: %s %s',
-  process.execPath,
-  args.join(' ')
-);
+  debug(
+    'forking child process via command: %s %s',
+    process.execPath,
+    args.join(' ')
+  );
 
-const proc = spawn(process.execPath, args, {
-  stdio: 'inherit'
-});
+  const proc = spawn(process.execPath, args, {
+    stdio: 'inherit'
+  });
 
-proc.stdout?.on('data', (data) => {
-  console.log(`Received data from subprocess ${data}`);
-});
-
-proc.stderr?.on('data', (data) => {
-  console.log(`Received error data from subprocess ${data}`);
-});
-
-proc.on('exit', (code, signal) => {
-  console.log(`Mocha exited with exit code ${code}, signal: ${signal}`);
-
-  process.on('exit', () => {
-    console.log(`Mocha exited with exit code ${code}, signal: ${signal}`);
-
-    if (signal) {
-      const numericSignal =
-        typeof signal === 'string' ? os.constants.signals[signal] : signal;
-      if (mochaArgs['posix-exit-codes'] === true) {
-        process.exit(SIGNAL_OFFSET + numericSignal);
+  proc.on('exit', (code, signal) => {
+    process.on('exit', () => {
+      if (signal) {
+        const numericSignal =
+          typeof signal === 'string' ? os.constants.signals[signal] : signal;
+        if (mochaArgs['posix-exit-codes'] === true) {
+          process.exit(SIGNAL_OFFSET + numericSignal);
+        } else {
+          process.kill(process.pid, signal);
+        }
+      } else if (code !== 0 && mochaArgs['posix-exit-codes'] === true) {
+        process.exit(EXIT_FAILURE);
       } else {
-        process.kill(process.pid, signal);
+        process.exit(code);
       }
-    } else if (code !== 0 && mochaArgs['posix-exit-codes'] === true) {
-      console.log(`Mocha exited with exit code ${code}; normalizing to ${EXIT_FAILURE}.`);
-      process.exit(EXIT_FAILURE);
-    } else {
-      process.exit(code);
+    });
+  });
+
+  // terminate children.
+  process.on('SIGINT', () => {
+    // XXX: a previous comment said this would abort the runner, but I can't see that it does
+    // anything with the default runner.
+    debug('main process caught SIGINT');
+    proc.kill('SIGINT');
+    // if running in parallel mode, we will have a proper SIGINT handler, so the below won't
+    // be needed.
+    if (!args.parallel || args.jobs < 2) {
+      // win32 does not support SIGTERM, so use next best thing.
+      if (os.platform() === 'win32') {
+        proc.kill('SIGKILL');
+      } else {
+        // using SIGKILL won't cleanly close the output streams, which can result
+        // in cut-off text or a befouled terminal.
+        debug('sending SIGTERM to child process');
+        proc.kill('SIGTERM');
+      }
     }
   });
-});
-
-// terminate children.
-process.on('SIGINT', () => {
-  // XXX: a previous comment said this would abort the runner, but I can't see that it does
-  // anything with the default runner.
-  debug('main process caught SIGINT');
-  proc.kill('SIGINT');
-  // if running in parallel mode, we will have a proper SIGINT handler, so the below won't
-  // be needed.
-  if (!args.parallel || args.jobs < 2) {
-    // win32 does not support SIGTERM, so use next best thing.
-    if (os.platform() === 'win32') {
-      proc.kill('SIGKILL');
-    } else {
-      // using SIGKILL won't cleanly close the output streams, which can result
-      // in cut-off text or a befouled terminal.
-      debug('sending SIGTERM to child process');
-      proc.kill('SIGTERM');
-    }
-  }
-});
+} else {
+  debug('running Mocha in-process');
+  require('../lib/cli/cli').main([], mochaArgs);
+}
