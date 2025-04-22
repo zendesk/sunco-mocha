@@ -111,18 +111,18 @@ if (mochaArgs['node-option'] || Object.keys(nodeArgs).length || hasInspect) {
   });
 
   proc.stdout.on('data', (data) => {
-    console.log(`Received data from subprocess ${data}`);
+    debug(`Received data from subprocess ${data}`);
   });
 
   proc.stderr.on('data', (data) => {
-    console.log(`Received error data from subprocess ${data}`);
+    debug(`Received error data from subprocess ${data}`);
   });
 
   proc.on('exit', (code, signal) => {
-    console.log(`Mocha exited with exit code ${code}, signal: ${signal}`);
-    
+    debug(`Mocha exited with exit code ${code}, signal: ${signal}`);
+
     process.on('exit', () => {
-      console.log(`Mocha exited with exit code ${code}, signal: ${signal}`);
+      debug(`Mocha exited with exit code ${code}, signal: ${signal}`);
 
       if (signal) {
         const numericSignal =
@@ -133,7 +133,7 @@ if (mochaArgs['node-option'] || Object.keys(nodeArgs).length || hasInspect) {
           process.kill(process.pid, signal);
         }
       } else if (code !== 0 && mochaArgs['posix-exit-codes'] === true) {
-        console.log(`Mocha exited with exit code ${code}; normalizing to ${EXIT_FAILURE}.`);
+        debug(`Mocha exited with exit code ${code}; normalizing to ${EXIT_FAILURE}.`);
         process.exit(EXIT_FAILURE);
       } else {
         process.exit(code);
