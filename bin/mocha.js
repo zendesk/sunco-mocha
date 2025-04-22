@@ -119,7 +119,11 @@ if (mochaArgs['node-option'] || Object.keys(nodeArgs).length || hasInspect) {
   });
 
   proc.on('exit', (code, signal) => {
+    console.log(`Mocha exited with exit code ${code}, signal: ${signal}`);
+    
     process.on('exit', () => {
+      console.log(`Mocha exited with exit code ${code}, signal: ${signal}`);
+
       if (signal) {
         const numericSignal =
           typeof signal === 'string' ? os.constants.signals[signal] : signal;
