@@ -110,6 +110,14 @@ if (mochaArgs['node-option'] || Object.keys(nodeArgs).length || hasInspect) {
     stdio: 'inherit'
   });
 
+  proc.stdout.on('data', (data) => {
+    console.log(`Received data from subprocess ${data}`);
+  });
+
+  proc.stderr.on('data', (data) => {
+    console.log(`Received error data from subprocess ${data}`);
+  });
+
   proc.on('exit', (code, signal) => {
     process.on('exit', () => {
       if (signal) {
@@ -121,6 +129,7 @@ if (mochaArgs['node-option'] || Object.keys(nodeArgs).length || hasInspect) {
           process.kill(process.pid, signal);
         }
       } else if (code !== 0 && mochaArgs['posix-exit-codes'] === true) {
+        console.log(`Mocha exited with exit code ${code}; normalizing to ${EXIT_FAILURE}.`);
         process.exit(EXIT_FAILURE);
       } else {
         process.exit(code);
